@@ -25,8 +25,10 @@ import org.red5.logging.Red5LoggerFactory;
 import org.red5.xuggler.Message;
 import org.slf4j.Logger;
 
-import com.xuggle.xuggler.ISimpleMediaFile;
-import com.xuggle.xuggler.io.IURLProtocolHandler;
+
+import io.humble.video.Muxer;
+//import com.xuggle.xuggler.ISimpleMediaFile;
+import io.humble.video.customio.IURLProtocolHandler;
 
 /**
  * An implementation of IURLProtocolHandler that converts into a format that ffmpeg can read.
@@ -55,7 +57,7 @@ public class MpegTsHandler implements IURLProtocolHandler {
 	private int pmtPid;
 
 	// Only package members can create
-	MpegTsHandler(MpegTsIoHandler handler, ISimpleMediaFile metaInfo, String url, int flags) {
+	MpegTsHandler(MpegTsIoHandler handler, Muxer metaInfo, String url, int flags) {
 		log.debug("ctor handler: {} file: {} url: {} flags: {}", handler, metaInfo, url, flags);
 		this.handler = handler;
 		this.url = url;

@@ -33,8 +33,8 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-import com.xuggle.mediatool.ToolFactory;
-import com.xuggle.xuggler.Global;
+//import com.xuggle.mediatool.ToolFactory;
+import io.humble.video.Global;
 
 /**
  * Creates, updates, locates, and manages media segments.
@@ -129,7 +129,8 @@ public class SegmenterService implements InitializingBean, DisposableBean {
 
 	public void afterPropertiesSet() throws Exception {
 		// put xuggle into turbo mode
-		ToolFactory.setTurboCharged(true);
+		//TODO: Determine if setTurboCharged exists for H-IO
+		//ToolFactory.setTurboCharged(true);
 		if (log.isDebugEnabled()) {
 			Global.setFFmpegLoggingLevel(99);
 		}

@@ -37,14 +37,14 @@ import org.red5.xuggler.tool.VideoAdjustTool;
 import org.red5.xuggler.writer.HLSStreamWriter;
 import org.slf4j.Logger;
 
-import com.xuggle.xuggler.IAudioSamples;
-import com.xuggle.xuggler.IAudioSamples.Format;
-import com.xuggle.xuggler.ICodec;
-import com.xuggle.xuggler.IPixelFormat;
-import com.xuggle.xuggler.IRational;
-import com.xuggle.xuggler.ISimpleMediaFile;
-import com.xuggle.xuggler.IVideoPicture;
-import com.xuggle.xuggler.SimpleMediaFile;
+import io.humble.video.MediaAudio;
+//import com.xuggle.xuggler.IAudioSamples.Format;
+import io.humble.video.Codec;
+import io.humble.video.PixelFormat;
+import io.humble.video.Rational;
+//import com.xuggle.xuggler.ISimpleMediaFile;
+import io.humble.video.MediaPicture;
+//import com.xuggle.xuggler.SimpleMediaFile;
 
 /**
  * Common location for segment related objects.
@@ -115,9 +115,9 @@ public class SegmentFacade {
 
 	private int outputSampleRate = 44100;
 	
-	private ICodec audioCodec;
+	private Codec audioCodec;
 
-	private ICodec videoCodec;
+	private Codec videoCodec;
 
 	public SegmentFacade(SegmenterService segmenter, String streamName) {
 		log.debug("Segment facade for: {}", streamName);
@@ -146,14 +146,14 @@ public class SegmentFacade {
 		// setup our writer
 		writer = new HLSStreamWriter(streamName);
 		// create a description of the output
-		ISimpleMediaFile outputStreamInfo = new SimpleMediaFile();
+		//ISimpleMediaFile outputStreamInfo = new SimpleMediaFile();
 		// codecs
 		log.debug("Output codecs - audio: {} video: {}", outputAudioCodec, outputVideoCodec);
-		audioCodec = ICodec.findEncodingCodecByName(outputAudioCodec);
+		audioCodec = Codec.findEncodingCodecByName(outputAudioCodec);
 		if (audioCodec == null || !audioCodec.canEncode()) {
 			log.error("Audio encoding not supported for {}", outputAudioCodec);
 		}
-		videoCodec = ICodec.findEncodingCodecByName(outputVideoCodec);
+		videoCodec = Codec.findEncodingCodecByName(outputVideoCodec);
 		if (videoCodec == null || !videoCodec.canEncode()) {
 			log.error("Video encoding not supported for {}", outputVideoCodec);
 		}

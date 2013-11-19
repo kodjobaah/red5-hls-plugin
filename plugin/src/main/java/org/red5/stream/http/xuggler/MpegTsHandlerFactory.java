@@ -25,10 +25,12 @@ import org.red5.logging.Red5LoggerFactory;
 import org.red5.xuggler.handler.IEventIOHandler;
 import org.slf4j.Logger;
 
-import com.xuggle.xuggler.ISimpleMediaFile;
-import com.xuggle.xuggler.io.IURLProtocolHandler;
-import com.xuggle.xuggler.io.IURLProtocolHandlerFactory;
-import com.xuggle.xuggler.io.URLProtocolManager;
+
+import io.humble.video.Muxer;
+//import com.xuggle.xuggler.ISimpleMediaFile;
+import io.humble.video.customio.IURLProtocolHandler;
+import io.humble.video.customio.IURLProtocolHandlerFactory;
+import io.humble.video.customio.URLProtocolManager;
 
 /**
  * Used by XUGGLE.IO to get a new URLProtocolHandler for an mpeg-ts URL.
@@ -41,7 +43,7 @@ public class MpegTsHandlerFactory implements IURLProtocolHandlerFactory {
 
 	private Map<String, MpegTsIoHandler> streams;
 
-	private Map<String, ISimpleMediaFile> streamsInfo;
+	private Map<String, Muxer> streamsInfo;
 
 	private static MpegTsHandlerFactory singleton = new MpegTsHandlerFactory();
 
@@ -82,7 +84,7 @@ public class MpegTsHandlerFactory implements IURLProtocolHandlerFactory {
 	 */
 	private MpegTsHandlerFactory() {
 		streams = new HashMap<String, MpegTsIoHandler>();
-		streamsInfo = new HashMap<String, ISimpleMediaFile>();
+		streamsInfo = new HashMap<String, Muxer>();
 	}
 
 	/**
@@ -135,7 +137,7 @@ public class MpegTsHandlerFactory implements IURLProtocolHandlerFactory {
 	 * @return The IRTMPEventIOHandler previously registered for this
 	 *         streamName, or null if none.
 	 */
-	public synchronized MpegTsIoHandler registerStream(MpegTsIoHandler handler, ISimpleMediaFile streamInfo) {
+	public synchronized MpegTsIoHandler registerStream(MpegTsIoHandler handler, Muxer streamInfo) {
 		log.debug("Register - handler: {} info: {}", handler, streamInfo);
 		if (streamInfo == null) {
 			throw new IllegalArgumentException("Stream info required");
