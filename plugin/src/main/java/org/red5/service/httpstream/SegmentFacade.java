@@ -38,13 +38,10 @@ import org.red5.xuggler.writer.HLSStreamWriter;
 import org.slf4j.Logger;
 
 import io.humble.video.MediaAudio;
-//import com.xuggle.xuggler.IAudioSamples.Format;
 import io.humble.video.Codec;
-import io.humble.video.PixelFormat;
 import io.humble.video.Rational;
-//import com.xuggle.xuggler.ISimpleMediaFile;
-import io.humble.video.MediaPicture;
-//import com.xuggle.xuggler.SimpleMediaFile;
+import io.humble.video.Muxer;
+import io.humble.video.MediaPicture;;
 
 /**
  * Common location for segment related objects.
@@ -146,7 +143,6 @@ public class SegmentFacade {
 		// setup our writer
 		writer = new HLSStreamWriter(streamName);
 		// create a description of the output
-		//ISimpleMediaFile outputStreamInfo = new SimpleMediaFile();
 		// codecs
 		log.debug("Output codecs - audio: {} video: {}", outputAudioCodec, outputVideoCodec);
 		audioCodec = Codec.findEncodingCodecByName(outputAudioCodec);
@@ -157,39 +153,14 @@ public class SegmentFacade {
 		if (videoCodec == null || !videoCodec.canEncode()) {
 			log.error("Video encoding not supported for {}", outputVideoCodec);
 		}
-		// audio
-		if (audioCodec != null) {
-			outputStreamInfo.setHasAudio(true);
-			outputStreamInfo.setAudioCodec(audioCodec.getID());
-			outputStreamInfo.setAudioChannels(outputAudioChannels);
-			outputStreamInfo.setAudioSampleRate(outputSampleRate);
-			//outputStreamInfo.setAudioBitRate(audioBitRate);
-			outputStreamInfo.setAudioSampleFormat(Format.FMT_S16);
-			IRational timeBase = IRational.make(1, outputSampleRate);
-			outputStreamInfo.setAudioTimeBase(timeBase);
-		} else {
-			log.debug("Audio is disabled");
-			outputStreamInfo.setHasAudio(false);
-		}
-		// video
-		if (videoCodec != null) {
-			outputStreamInfo.setHasVideo(true);
-			outputStreamInfo.setVideoCodec(videoCodec.getID());
-			outputStreamInfo.setVideoWidth(outputWidth);
-			outputStreamInfo.setVideoHeight(outputHeight);
-			//outputStreamInfo.setVideoBitRate(videoBitRate);
-			outputStreamInfo.setVideoGlobalQuality(0);
-		} else {
-			log.debug("Video is disabled");
-			outputStreamInfo.setHasVideo(false);
-		}
-		writer.setup(this, outputStreamInfo);
+		Rational timeBase = Rational.make(1, outputSampleRate);
+		writer.setup(this, audioCodec.getID(), outputAudioChannels, outputSampleRate, timeBase, videoCodec.getID(), outputWidth, outputHeight);
 		// open the writer so we can configure the coders
 		log.debug("Opening writer");
 		writer.open();
 		// add streams
 		if (videoCodec != null) {
-			writer.addVideoStream(0, videoCodec, IRational.make(outputFps * 1.0d), outputWidth, outputHeight);
+			writer.addVideoStream(0, videoCodec, Rational.make(outputFps * 1.0d), outputWidth, outputHeight);
 		}
 		if (audioCodec != null) {
 			writer.addAudioStream(0, audioCodec, outputAudioChannels, outputSampleRate);

@@ -18,28 +18,21 @@
 
 package org.red5.xuggler.reader;
 
+import io.humble.video.MediaDescriptor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.xuggle.mediatool.IMediaReader;
-import com.xuggle.mediatool.MediaToolAdapter;
-import com.xuggle.mediatool.ToolFactory;
-import com.xuggle.mediatool.event.IAudioSamplesEvent;
-import com.xuggle.mediatool.event.ICloseEvent;
-import com.xuggle.mediatool.event.IVideoPictureEvent;
-import com.xuggle.xuggler.IContainer;
-import com.xuggle.xuggler.IError;
 
 /**
  * Reads media data from an RTMP source.
  * 
  * @author Paul Gregoire (mondain@gmail.com)
  */
-public class RTMPReader extends MediaToolAdapter implements GenericReader {
+public class RTMPReader implements GenericReader {
 
 	private Logger log = LoggerFactory.getLogger(RTMPReader.class);
 
-	private IMediaReader reader;
+	private MediaDescriptor reader;
 
 	private String inputUrl;
 

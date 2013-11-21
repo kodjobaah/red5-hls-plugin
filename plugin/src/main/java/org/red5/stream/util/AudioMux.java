@@ -26,7 +26,7 @@ import org.red5.service.httpstream.SegmentFacade;
 import org.red5.xuggler.SampleData;
 import org.slf4j.Logger;
 
-import com.xuggle.xuggler.Global;
+import io.humble.video.Global;
 
 /**
  * Muxer for 1..n audio streams.

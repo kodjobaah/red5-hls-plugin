@@ -21,7 +21,7 @@ package org.red5.xuggler;
 import java.nio.ShortBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.xuggle.xuggler.Global;
+import io.humble.video.Global;
 
 /**
  * Holder of audio samples.

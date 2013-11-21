@@ -21,6 +21,7 @@ package org.red5.xuggler.writer;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import io.humble.video.AudioFormat.Type;
 import io.humble.video.Codec;
+import io.humble.video.Codec.ID;
 import io.humble.video.Coder;
 import io.humble.video.Encoder;
 import io.humble.video.Global;
@@ -128,14 +129,10 @@ public class HLSStreamWriter implements IStreamWriter {
 	public HLSStreamWriter(String streamName) {
 		outputUrl = MpegTsHandlerFactory.DEFAULT_PROTOCOL + ':' + streamName;
 	}
-
-	public void setup(final SegmentFacade facade, Muxer outputStreamInfo) {
+	
+	public void setup(SegmentFacade segmentFacade, ID id, int outputAudioChannels, int outputSampleRate, Rational timeBase, ID id2, int outputWidth, int outputHeight) {
 		log.debug("setup {}", outputUrl);
-		this.container = outputStreamInfo;
-		this.facade = facade;
-		// output to a custom handler
-		//outputStreamInfo.setget(outputUrl);
-		// setup our mpeg-ts io handler
+		this.facade = segmentFacade;
 		MpegTsIoHandler outputHandler = new MpegTsIoHandler(outputUrl, facade);
 		MpegTsHandlerFactory.getFactory().registerStream(outputHandler, outputStreamInfo);
 		// create a container
@@ -661,4 +658,5 @@ public class HLSStreamWriter implements IStreamWriter {
 	public String toString() {
 		return "HLSStreamWriter[" + outputUrl + "]";
 	}
+
 }
