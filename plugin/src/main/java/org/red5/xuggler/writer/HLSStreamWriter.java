@@ -134,9 +134,9 @@ public class HLSStreamWriter implements IStreamWriter {
 		log.debug("setup {}", outputUrl);
 		this.facade = segmentFacade;
 		MpegTsIoHandler outputHandler = new MpegTsIoHandler(outputUrl, facade);
-		MpegTsHandlerFactory.getFactory().registerStream(outputHandler, outputStreamInfo);
 		// create a container
 		container = Muxer.make(outputUrl, null, "mpegts");
+		MpegTsHandlerFactory.getFactory().registerStream(outputHandler, container);
 	}
 
 	/** 
@@ -657,6 +657,12 @@ public class HLSStreamWriter implements IStreamWriter {
 	/** {@inheritDoc} */
 	public String toString() {
 		return "HLSStreamWriter[" + outputUrl + "]";
+	}
+
+	@Override
+	public void setup(SegmentFacade facade, Muxer muxer) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

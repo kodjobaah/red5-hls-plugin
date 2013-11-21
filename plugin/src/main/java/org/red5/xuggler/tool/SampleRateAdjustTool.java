@@ -18,31 +18,34 @@
 
 package org.red5.xuggler.tool;
 
+import io.humble.video.AudioChannel.Layout;
+import io.humble.video.AudioFormat;
+import io.humble.video.AudioFormat.Type;
+import io.humble.video.MediaAudio;
+import io.humble.video.MediaAudioResampler;
+
+import org.red5.server.stream.codec.AudioCodec;
 import org.red5.service.httpstream.SegmentFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.xuggle.mediatool.MediaToolAdapter;
-import com.xuggle.mediatool.event.IAudioSamplesEvent;
-import com.xuggle.mediatool.event.ICloseEvent;
-import com.xuggle.xuggler.IAudioResampler;
-import com.xuggle.xuggler.IAudioSamples;
 
 /**
  * Create a tool which adjusts the sample rate of audio.
  * 
  * @author Paul Gregoire (mondain@gmail.com)
  */
-public class SampleRateAdjustTool extends MediaToolAdapter implements GenericTool {
+public class SampleRateAdjustTool implements GenericTool {
 
 	private Logger log = LoggerFactory.getLogger(SampleRateAdjustTool.class);
 
-	private IAudioResampler resampler;
+	private MediaAudioResampler resampler;
 
 	// sample rate to adjust to
 	private int rate;
 
 	private int channels;
+	
+	private Type formatType;
 
 	private SegmentFacade facade;
 	
@@ -58,28 +61,26 @@ public class SampleRateAdjustTool extends MediaToolAdapter implements GenericToo
 	}
 
 	/** {@inheritDoc} */
-	@Override
-	public void onAudioSamples(IAudioSamplesEvent event) {
-		IAudioSamples samples = event.getAudioSamples();
+	public void onAudioSamples(MediaAudio samples) {
 		if (samples.getSampleRate() != rate || samples.getChannels() != channels) {
 			log.debug("SampleRateAdjustTool onAudioSamples");
     		if (resampler == null) {
     			// http://build.xuggle.com/view/Stable/job/xuggler_jdk5_stable/javadoc/java/api/com/xuggle/xuggler/IAudioResampler.html
-    			resampler = IAudioResampler.make(channels, samples.getChannels(), rate, samples.getSampleRate(), IAudioSamples.Format.FMT_S16, samples.getFormat());
+    			resampler = MediaAudioResampler.make(Layout.CH_LAYOUT_STEREO, rate, AudioFormat.Type.SAMPLE_FMT_S16, samples.getChannelLayout(), samples.getSampleRate(), samples.getFormat());
     			log.info("Resampled formats - input: {} output: {}", resampler.getInputFormat(), resampler.getOutputFormat());
     		}
     		long sampleCount = samples.getNumSamples();
     		if (resampler != null && sampleCount > 0) {
     			log.trace("In - samples: {} rate: {} channels: {}", sampleCount, samples.getSampleRate(), samples.getChannels());
-    			IAudioSamples out = IAudioSamples.make(sampleCount, channels);
-    			resampler.resample(out, samples, sampleCount);
+    			MediaAudio out = MediaAudio.make(samples, true);
+    			resampler.resample(out, samples);
     			log.trace("Out - samples: {} rate: {} channels: {}", out.getNumSamples(), out.getSampleRate(), out.getChannels());
     			// queue audio
-    			facade.queueAudio(out, event.getTimeStamp(), event.getTimeUnit());
+    			facade.queueAudio(out.copyReference());
     			//out.delete();
     			samples.delete();
     		} else {
-    			facade.queueAudio(samples, event.getTimeStamp(), event.getTimeUnit());
+    			facade.queueAudio(samples.copyReference());
     		}
     		log.debug("SampleRateAdjustTool onAudioSamples - end");
 		} else {

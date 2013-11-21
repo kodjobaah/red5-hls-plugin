@@ -18,6 +18,8 @@
 
 package org.red5.service.httpstream;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -26,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+
+import javax.imageio.ImageIO;
 
 import org.red5.logging.Red5LoggerFactory;
 import org.red5.service.httpstream.model.Segment;
@@ -41,7 +45,9 @@ import io.humble.video.MediaAudio;
 import io.humble.video.Codec;
 import io.humble.video.Rational;
 import io.humble.video.Muxer;
-import io.humble.video.MediaPicture;;
+import io.humble.video.MediaPicture;
+import io.humble.video.awt.MediaPictureConverter;
+import io.humble.video.javaxsound.StereoS16AudioConverter;
 
 /**
  * Common location for segment related objects.
@@ -174,12 +180,14 @@ public class SegmentFacade {
 			log.trace("Adding audio adjustment");
 			SampleRateAdjustTool srat = new SampleRateAdjustTool(outputSampleRate, outputAudioChannels);
 			srat.setFacade(this);
-			reader.addListener(srat);
+			//TODO: Hook these up
+			//reader.addListener(srat);
 			// add video adjustment tool
 			log.trace("Adding video adjustment");
 			VideoAdjustTool vat = new VideoAdjustTool(outputWidth, outputHeight);
 			vat.setFacade(this);
-			reader.addListener(vat);
+			//TODO: Hook these up
+			//reader.addListener(vat);
 			// start the reader
 			segmenterReference.get().submitJob(reader);
 		}
@@ -348,34 +356,14 @@ public class SegmentFacade {
 	}
 
 	/**
-	 * Queue the audio data from non-xuggler source.
-	 * 
-	 * @param samples audio data to queue
-	 * @param timeStamp 
-	 * @param timeUnit
-	 */
-	public void queueAudio(short[] samples, long timeStamp, TimeUnit timeUnit) {
-		log.trace("Queue audio");
-		dataQueue.add(new QueuedAudioData(samples, timeStamp, timeUnit));
-	}
-
-	/**
 	 * Queue the audio data from xuggler.
 	 * 
 	 * @param samples audio data to queue
 	 * @param timeStamp 
 	 * @param timeUnit
 	 */
-	public void queueAudio(IAudioSamples samples, long timeStamp, TimeUnit timeUnit) {
-		log.trace("Queue audio");
-		// convert from AudioSamples to short array
-		ByteBuffer buf = samples.getByteBuffer();
-		byte[] decoded = new byte[buf.limit()];
-		buf.get(decoded);
-		buf.flip();
-		short[] isamples = BufferUtils.byteToShortArray(decoded, 0, decoded.length, true);
-		// queue them up for writing
-		dataQueue.add(new QueuedAudioData(isamples, timeStamp, timeUnit));
+	public void queueAudio(MediaAudio samples) {
+		dataQueue.add(new QueuedAudioData(samples.copyReference()));
 		// make a copy for group mux if one exists
 		if (mux != null) {
 			mux.pushData(streamName, isamples);
@@ -389,7 +377,7 @@ public class SegmentFacade {
 	 * @param timeStamp 
 	 * @param timeUnit
 	 */
-	public void queueVideo(IVideoPicture pic, long timeStamp, TimeUnit timeUnit) {
+	public void queueVideo(MediaPicture pic, long timeStamp, TimeUnit timeUnit) {
 		log.trace("Queue video");
 		dataQueue.add(new QueuedVideoData(pic, timeStamp, timeUnit));
 	}
@@ -491,24 +479,19 @@ public class SegmentFacade {
 
 		final long timeStamp;
 
-		final TimeUnit timeUnit;
+		final Rational timeUnit;
 
 		@SuppressWarnings("unused")
-		QueuedAudioData(IAudioSamples isamples, long timeStamp, TimeUnit timeUnit) {
-			ByteBuffer buf = isamples.getByteBuffer();
+		QueuedAudioData(MediaAudio isamples) {
+			StereoS16AudioConverter sac = new StereoS16AudioConverter(isamples.getSampleRate(), isamples.getChannelLayout(), isamples.getFormat());
+			ByteBuffer buf = ByteBuffer.allocate(isamples.getNumSamples()*isamples.getBytesPerSample());
+			sac.toJavaAudio(buf, isamples);
 			byte[] decoded = new byte[buf.limit()];
 			buf.get(decoded);
 			buf.flip();
 			this.samples = BufferUtils.byteToShortArray(decoded, 0, decoded.length, true);
-			this.timeStamp = timeStamp;
-			this.timeUnit = timeUnit;
-		}
-
-		QueuedAudioData(short[] isamples, long timeStamp, TimeUnit timeUnit) {
-			this.samples = new short[isamples.length];
-			System.arraycopy(isamples, 0, samples, 0, isamples.length);
-			this.timeStamp = timeStamp;
-			this.timeUnit = timeUnit;
+			this.timeStamp = isamples.getTimeStamp();
+			this.timeUnit = isamples.getTimeBase();
 		}
 
 		/**
@@ -521,7 +504,7 @@ public class SegmentFacade {
 		/**
 		 * @return the timeUnit
 		 */
-		public TimeUnit getTimeUnit() {
+		public Rational getTimeUnit() {
 			return timeUnit;
 		}
 
@@ -546,8 +529,16 @@ public class SegmentFacade {
 
 		final TimeUnit timeUnit;
 
-		QueuedVideoData(IVideoPicture pic, long timeStamp, TimeUnit timeUnit) {
-			ByteBuffer buf = pic.getByteBuffer();
+		QueuedVideoData(MediaPicture pic) {
+			//TODO: This is a lot of work to get a byte[]. Why are we doing this?
+			/*MediaPictureConverter mpc = MediaPictureConverterFactory.createConverter(pic, PixelFormat.Type.PIX_FMT_YUV420P);
+			BufferedImage bimg = new BufferedImage(pic.getWidth(), pic.getHeight(),  BufferedImage.TYPE_INT_RGB);
+			BufferedImage originalImage = mpc.toImage(bimg, pic);
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			ImageIO.write( originalImage, "jpg", baos );
+			baos.flush();
+			byte[] imageInByte = baos.toByteArray();
+			baos.close();
 			picture = new byte[buf.limit()];
 			buf.get(picture);
 			buf.flip();
@@ -626,6 +617,11 @@ public class SegmentFacade {
 			}
 		}
 
+	}
+
+	public void queueAudio(MediaAudio copyReference) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

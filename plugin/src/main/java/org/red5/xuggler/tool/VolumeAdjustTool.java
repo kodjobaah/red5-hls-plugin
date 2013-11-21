@@ -31,7 +31,7 @@ import com.xuggle.mediatool.event.IAudioSamplesEvent;
  * 
  * @author Paul Gregoire (mondain@gmail.com)
  */
-public class VolumeAdjustTool extends MediaToolAdapter implements GenericTool {
+public class VolumeAdjustTool implements GenericTool {
 
 	private Logger log = LoggerFactory.getLogger(VolumeAdjustTool.class);
 

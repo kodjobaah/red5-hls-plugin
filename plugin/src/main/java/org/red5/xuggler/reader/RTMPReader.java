@@ -18,10 +18,20 @@
 
 package org.red5.xuggler.reader;
 
-import io.humble.video.MediaDescriptor;
+import io.humble.video.Demuxer;
+import io.humble.video.MediaAudio;
+import io.humble.video.MediaPacket;
+import io.humble.video.MediaPicture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+//import io.humble.video.IMediaReader;
+//import io.humble.video.MediaToolAdapter;
+//import io.humble.video.ToolFactory;
+//import io.humble.video.event.IAudioSamplesEvent;
+//import io.humble.video.event.ICloseEvent;
+//import io.humble.video.event.IVideoPictureEvent;
 
 /**
  * Reads media data from an RTMP source.
@@ -32,7 +42,7 @@ public class RTMPReader implements GenericReader {
 
 	private Logger log = LoggerFactory.getLogger(RTMPReader.class);
 
-	private MediaDescriptor reader;
+	private Demuxer reader;
 
 	private String inputUrl;
 
@@ -85,36 +95,38 @@ public class RTMPReader implements GenericReader {
 		*/
 
 		// url only
-		reader = ToolFactory.makeReader(inputUrl);
-		reader.setCloseOnEofOnly(false);
-		reader.setQueryMetaData(true);
-		reader.setAddDynamicStreams(false);
+		reader = Demuxer.make();
+		//TODO: Determine necessity -> reader.setCloseOnEofOnly(false);
+		//TODO: implement in reader.open() -> reader.setQueryMetaData(true);
+		//TODO: implement in reader.open() -> reader.setAddDynamicStreams(false);
 
 		// get the container
-		IContainer container = reader.getContainer();
-		container.setReadRetryCount(0);
-		container.setInputBufferLength(0);
-		container.setProperty("analyzeduration", 0); // int = specify how many microseconds are analyzed to probe the input (from 0 to INT_MAX)
+		reader.setReadRetryCount(0);
+		reader.setInputBufferLength(0);
+		reader.setProperty("analyzeduration", 0); // int = specify how many microseconds are analyzed to probe the input (from 0 to INT_MAX)
 		//		container.setProperty("probesize", 1024); // int = set probing size in bytes (from 32 to INT_MAX)
 		//		container.setProperty("fpsprobesize", 4); // int = number of frames used to probe
 		//		container.setPreload(1);
 		//		IContainerFormat format = container.getContainerFormat();
 		//		format.setInputFormat("flv");
 		//		container.setFormat(format);
-		if (videoEnabled) {
+		
+		//TODO -> determine what we're trying to do here ->
+		/*if (videoEnabled) {
 			// have the reader create a buffered image that others can reuse
 			//reader.setBufferedImageTypeToGenerate(BufferedImage.TYPE_3BYTE_BGR);
 		} else {
 			reader.setBufferedImageTypeToGenerate(-1);
-		}
+		}*/
+		
 		//add this as the first listener
-		reader.addListener(this);
+		//TODO: [#1000] See if we need to dupe this behavior for plugin functionality -> reader.addListener(this);
 	}
 
 	public void stop() {
 		log.debug("Stop");
 		if (reader != null) {
-			reader.removeListener(this);
+			//TODO: as [#1000] -> reader.removeListener(this);
 			try {
 				reader.close();
 			} catch (Exception e) {
@@ -145,56 +157,58 @@ public class RTMPReader implements GenericReader {
 		//
 		int packetsRead = 0;
 		// error holder
-		IError err = null;
+		//TODO: [#1001] determine how we're bringin this funcitonality for IError err = null;
+		//TODO: [#1003] where is the packet? let's make it?
+		MediaPacket packet = MediaPacket.make();
 		try {
 			// packet read loop
-			while ((err = reader.readPacket()) == null) {
-				long elapsedMillis = (System.currentTimeMillis() - startTime);
-				log.debug("Reads - frames: {} samples: {}", videoFramesRead, audioSamplesRead);
-				if (log.isTraceEnabled()) {
+			if (log.isTraceEnabled()) {
+				while (reader.read(packet) > 0) {
+					//TODO: [#1002] determine if dropping this metric under isTrace is more appropriate ->
+					long elapsedMillis = (System.currentTimeMillis() - startTime);
+					log.trace("Reads - frames: {} samples: {}", videoFramesRead, audioSamplesRead);
 					log.trace("Reads - packets: {} elapsed: {} ms", packetsRead++, elapsedMillis);
 				}
+			}else{
+				while (reader.read(packet) > 0) {
+					//do nothing, for great speed and profit!
+				}
+				log.trace("Done demuxing");
 			}
 		} catch (Throwable t) {
 			log.warn("Exception closing reader", t);
-		}
-		if (err != null) {
-			log.warn("{}", err.toString());
 		}
 		log.trace("End of reader loop");
 		stop();
 		log.trace("RTMPReader - end");
 	}
 
-	@Override
-	public void onAudioSamples(IAudioSamplesEvent event) {
+	public void onAudioSamples(MediaAudio audio) {
 		log.trace("Reader onAudioSamples");
 		if (audioEnabled) {
 			// increment our count
-			audioSamplesRead += event.getAudioSamples().getNumSamples();
+			audioSamplesRead += audio.getNumSamples();
 			// pass the even up the chain
-			super.onAudioSamples(event);
+			//TODO: [#1004] implement? super.onAudioSamples(event);
 		}
 	}
 
-	@Override
-	public void onVideoPicture(IVideoPictureEvent event) {
+	public void onVideoPicture(MediaPicture picture) {
 		log.trace("Reader onVideo");
 		if (videoEnabled) {
 			// look for a key frame
-			keyFrameReceived = event.getPicture().isKeyFrame() ? true : keyFrameReceived;
+			keyFrameReceived = picture.isKey() ? true : keyFrameReceived;
 			// once we have had one, proceed
 			if (keyFrameReceived) {
 				videoFramesRead += 1;
-				super.onVideoPicture(event);
+				//TODO: #[1006] implement? super.onVideoPicture(event);
 			}
 		}
 	}
 
-	@Override
-	public void onClose(ICloseEvent event) {
+	public void onClose() {
 		log.debug("Reader close");
-		super.onClose(event);
+		this.stop();
 	}
 
 	public String getInputUrl() {
@@ -236,7 +250,7 @@ public class RTMPReader implements GenericReader {
 	/**
 	 * @return the reader
 	 */
-	public IMediaReader getReader() {
+	public Demuxer getReader() {
 		return reader;
 	}
 
