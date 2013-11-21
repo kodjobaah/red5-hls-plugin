@@ -19,13 +19,25 @@
 package org.red5.xuggler.writer;
 
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import io.humble.video.AudioFormat.Type;
+import io.humble.video.Codec;
+import io.humble.video.Coder;
+import io.humble.video.Encoder;
+import io.humble.video.Global;
+import io.humble.video.MediaAudio;
+import io.humble.video.MediaPacket;
+import io.humble.video.MediaPicture;
+import io.humble.video.Muxer;
+import io.humble.video.MuxerStream;
+import io.humble.video.PixelFormat;
+import io.humble.video.Rational;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+import org.red5.server.api.stream.IStream;
 import org.red5.service.httpstream.SegmentFacade;
 import org.red5.service.httpstream.SegmenterService;
 import org.red5.service.httpstream.model.Segment;
@@ -33,28 +45,6 @@ import org.red5.stream.http.xuggler.MpegTsHandlerFactory;
 import org.red5.stream.http.xuggler.MpegTsIoHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import io.humble.video.AudioFormat.Type;
-import io.humble.video.Configuration;
-import io.humble.video.Decoder;
-import io.humble.video.Encoder;
-import io.humble.video.Global;
-import io.humble.video.MediaAudio;
-import io.humble.video.Codec;
-import io.humble.video.Container;
-import io.humble.video.ContainerFormat;
-//import io.humble.video.Error;
-//import io.humble.video.MetaData;
-import io.humble.video.MediaPacket;
-import io.humble.video.MediaPicture;
-import io.humble.video.Muxer;
-import io.humble.video.MuxerFormat;
-import io.humble.video.MuxerStream;
-import io.humble.video.PixelFormat;
-import io.humble.video.Rational;
-//import io.humble.video.SimpleMediaFile;
-import io.humble.video.ContainerStream;
-import io.humble.video.Coder;
 
 /**
  * An writer that encodes and decodes media to containers. Based on MediaWriter class from Xuggler.
@@ -112,8 +102,6 @@ public class HLSStreamWriter implements IStreamWriter {
 
 	private Encoder videoCoder;
 
-	private Muxer outputStreamInfo;
-
 	// true if the writer should ask FFMPEG to interleave media
 	private boolean forceInterleave = false;
 
@@ -125,7 +113,7 @@ public class HLSStreamWriter implements IStreamWriter {
 
 	private volatile double videoDuration;
 
-	private int videoBitRate = 360000;
+	//TODO: implement private int videoBitRate = 360000;
 
 	private long prevAudioTime = 0L;
 
@@ -143,7 +131,7 @@ public class HLSStreamWriter implements IStreamWriter {
 
 	public void setup(final SegmentFacade facade, Muxer outputStreamInfo) {
 		log.debug("setup {}", outputUrl);
-		this.outputStreamInfo = outputStreamInfo;
+		this.container = outputStreamInfo;
 		this.facade = facade;
 		// output to a custom handler
 		//outputStreamInfo.setget(outputUrl);
@@ -173,7 +161,6 @@ public class HLSStreamWriter implements IStreamWriter {
 	 * @see IStreamCoder
 	 * @see ICodec
 	 */
-	@SuppressWarnings("deprecation")
 	public int addAudioStream(int streamId, Codec codec, int channelCount, int sampleRate) {
 		log.debug("addAudioStream {}", outputUrl);
 		// validate parameters
@@ -186,7 +173,7 @@ public class HLSStreamWriter implements IStreamWriter {
 		// configure the stream coder
 		audioCoder = Encoder.make(codec);
 		// add the new stream at the correct index
-		outputStreamInfo.addNewStream(audioCoder);
+		container.addNewStream(audioCoder);
 		//if (audioStream == null) {
 		//	throw new RuntimeException("Unable to create stream id " + streamId + ", codec " + codec);
 		//}
@@ -245,7 +232,6 @@ public class HLSStreamWriter implements IStreamWriter {
 	 * @see IStreamCoder
 	 * @see ICodec
 	 */
-	@SuppressWarnings("deprecation")
 	public int addVideoStream(int streamId, Codec codec, Rational frameRate, int width, int height) {
 		log.debug("addVideoStream {}", outputUrl);
 		// validate parameters
@@ -255,7 +241,7 @@ public class HLSStreamWriter implements IStreamWriter {
 		// configure the stream coder
 		videoCoder = Encoder.make(codec);
 		// add the new stream at the correct index
-		outputStreamInfo.addNewStream(videoCoder);
+		container.addNewStream(videoCoder);
 		//if (videoStream == null) {
 		//	throw new RuntimeException("Unable to create stream id " + streamId + ", codec " + codec);
 		//}
@@ -524,7 +510,6 @@ public class HLSStreamWriter implements IStreamWriter {
 			//			}			
 	}
 
-	@SuppressWarnings("deprecation")
 	public void start() {
 		log.debug("start {}", outputUrl);
 		/* open coders
@@ -560,48 +545,38 @@ public class HLSStreamWriter implements IStreamWriter {
 	 */
 	public void flush() {
 		log.debug("flush {}", outputUrl);
-		// flush coders
-		if (outputStreamInfo.hasAudio()) {
-			if (audioCoder.isOpen()) {
-				IPacket packet = IPacket.make();
-				while (!packet.isComplete()) {
-					if (audioCoder.encodeAudio(packet, null, 0) < 0) {
-						break;
-					}
-				}
-				packet.delete();
+		if (audioCoder.getState().equals(Coder.State.STATE_OPENED)) {
+			MediaPacket packet = MediaPacket.make();
+			while (!packet.isComplete()) {
+				audioCoder.encodeAudio(packet, null);
 			}
+			packet.delete();
 		}
 		// flush video coder
-		if (outputStreamInfo.hasVideo()) {
-			if (videoCoder.isOpen()) {
-				log.debug("Dropped frames: {} predicted pts: {}", videoCoder.getNumDroppedFrames(), videoCoder.getNextPredictedPts());
-				IPacket packet = IPacket.make();
-				while (!packet.isComplete()) {
-					if (videoCoder.encodeVideo(packet, null, 0) < 0) {
-						break;
-					}
-				}
-				packet.delete();
+		if (videoCoder.getState().equals(Coder.State.STATE_OPENED)) {
+			//TODO: where does this info live in H-IO log.debug("Dropped frames: {} predicted pts: {}", videoCoder.getNumDroppedFrames(), videoCoder.getNextPredictedPts());
+			MediaPacket packet = MediaPacket.make();
+			while (!packet.isComplete()) {
+				videoCoder.encodeVideo(packet, null);
 			}
+			packet.delete();
 		}
 		// flush the container
-		container.flushPackets();
+		container.close();;
 	}
 
 	/** {@inheritDoc} */
 	public void close() {
 		log.debug("close {}", outputUrl);
 		MpegTsHandlerFactory.getFactory().deleteStream(outputUrl);
-		int rv;
 		// flush coders
 		flush();
 		// write the trailer on the output container
-		if ((rv = container.writeTrailer()) < 0) {
-			log.error("Error {}, failed to write trailer to {}", IError.make(rv), outputUrl);
-		}
+		//TODO: Do we do this anymore? if ((rv = container.writeTrailer()) < 0) {
+		//	log.error("Error {}, failed to write trailer to {}", IError.make(rv), outputUrl);
+		//}
 		// close the coders opened by this MediaWriter
-		if (outputStreamInfo.hasVideo()) {
+		/*if (container.hasVideo()) {
 			try {
 				if ((rv = videoCoder.close()) < 0) {
 					log.error("Error {}, failed close coder {}", getErrorMessage(rv), videoCoder);
@@ -610,7 +585,7 @@ public class HLSStreamWriter implements IStreamWriter {
 				videoCoder.delete();
 			}
 		}
-		if (outputStreamInfo.hasAudio()) {
+		if (container.hasAudio()) {
 			try {
 				if ((rv = audioCoder.close()) < 0) {
 					log.error("Error {}, failed close coder {}", getErrorMessage(rv), audioCoder);
@@ -622,6 +597,14 @@ public class HLSStreamWriter implements IStreamWriter {
 		// if we're supposed to, close the container
 		if ((rv = container.close()) < 0) {
 			throw new RuntimeException("error " + IError.make(rv) + ", failed close IContainer " + container + " for " + outputUrl);
+		}*/
+		if(videoCoder.getState().equals(Coder.State.STATE_OPENED)){
+			videoCoder.delete();
+			videoCoder = null;
+		}
+		if(audioCoder.getState().equals(Coder.State.STATE_OPENED)){
+			audioCoder.delete();
+			audioCoder = null;
 		}
 		// get the current segment, if one exists
 		Segment segment = facade.getSegment();
@@ -670,7 +653,7 @@ public class HLSStreamWriter implements IStreamWriter {
 	 * Get the default time base we'll use on our encoders if one is not specified by the codec.
 	 * @return the default time base
 	 */
-	public IRational getDefaultTimebase() {
+	public Rational getDefaultTimebase() {
 		return DEFAULT_TIMEBASE.copyReference();
 	}
 
@@ -678,15 +661,4 @@ public class HLSStreamWriter implements IStreamWriter {
 	public String toString() {
 		return "HLSStreamWriter[" + outputUrl + "]";
 	}
-
-	private static String getErrorMessage(int rv) {
-		String errorString = "";
-		IError error = IError.make(rv);
-		if (error != null) {
-			errorString = error.toString();
-			error.delete();
-		}
-		return errorString;
-	}
-
 }
