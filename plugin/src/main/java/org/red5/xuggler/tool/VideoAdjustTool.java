@@ -18,6 +18,7 @@
 
 package org.red5.xuggler.tool;
 
+import io.humble.video.Global;
 import io.humble.video.MediaPicture;
 import io.humble.video.MediaPictureResampler;
 import io.humble.video.PixelFormat.Type;
@@ -51,7 +52,6 @@ public class VideoAdjustTool implements GenericTool {
 		this.height = height;
 	}
 
-	@Override
 	public void onVideoPicture(MediaPicture in) {
 		log.debug("Adjust onVideo");
 		log.debug("Video ts: {}", in.getFormattedTimeStamp());
@@ -62,24 +62,20 @@ public class VideoAdjustTool implements GenericTool {
 			//log.trace("Video timestamp: {} pixel type: {}", event.getTimeStamp(), in.getPixelType());
 			log.trace("Video in: {} x {} out: {} x {}", new Object[] { inWidth, inHeight, width, height });
 			if (resampler == null) {
-				resampler = MediaPictureResampler.make
-						//(width, height, pixelType, in.getWidth(), in.getHeight(), in.getFormat());
+				resampler = MediaPictureResampler.make(width, height, pixelType, in.getWidth(), in.getHeight(), in.getFormat(), 0);
 						//(width, height, pixelType, inWidth, inHeight, in.getFormat());
 				log.debug("Video resampler: {}", resampler);
 			}
 			if (resampler != null) {
-				MediaPicture out = MediaPicture.make(pixelType, width, height);
-				if (resampler.resample(out, in) >= 0) {
-					//check complete
-					if (out.isComplete()) {
-						// queue video
-						facade.queueVideo(out, event.getTimeStamp(), event.getTimeUnit());
-						in.delete();
-					} else {
-						log.warn("Resampled picture was not marked as complete");
-					}
+				MediaPicture out = MediaPicture.make(width, height, pixelType);
+				resampler.resample(out, in);
+				//check complete
+				if (out.isComplete()) {
+					// queue video
+					facade.queueVideo(out, out.getTimeStamp(), Global.DEFAULT_TIME_UNIT);
+					in.delete();
 				} else {
-					log.warn("Resample failed");
+					log.warn("Resampled picture was not marked as complete");
 				}
 				out.delete();
 			} else {
@@ -88,17 +84,8 @@ public class VideoAdjustTool implements GenericTool {
 			log.debug("VideoAdjustTool onVideoPicture - end");
 		} else {
 			// queue video
-			facade.queueVideo(in, event.getTimeStamp(), event.getTimeUnit());
+			facade.queueVideo(in, in.getTimeStamp(), Global.DEFAULT_TIME_UNIT);
 		}
-	}
-
-	/* (non-Javadoc)
-	 * @see com.xuggle.mediatool.MediaToolAdapter#onClose(com.xuggle.mediatool.event.ICloseEvent)
-	 */
-	@Override
-	public void onClose(ICloseEvent event) {
-		close();
-		super.onClose(event);
 	}
 
 	public void close() {

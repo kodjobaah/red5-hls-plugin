@@ -18,13 +18,12 @@
 
 package org.red5.xuggler.tool;
 
+import io.humble.video.MediaAudio;
+
 import java.nio.ShortBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.xuggle.mediatool.MediaToolAdapter;
-import com.xuggle.mediatool.event.IAudioSamplesEvent;
 
 /**
  * Create a tool which adjusts the volume of audio by some constant factor.
@@ -47,17 +46,16 @@ public class VolumeAdjustTool implements GenericTool {
 		this.volume = volume;
 	}
 
-	/** {@inheritDoc} */
-	@Override
-	public void onAudioSamples(IAudioSamplesEvent event) {
+	public void onAudioSamples(MediaAudio audio) {
 		log.debug("VolumeAdjustTool onAudioSamples");
 		// get the raw audio byes and adjust it's value 
-		ShortBuffer buffer = event.getAudioSamples().getByteBuffer().asShortBuffer();
+		//TODO: port -> 
+		/*ShortBuffer buffer = audio.getByteBuffer().asShortBuffer();
 		for (int i = 0; i < buffer.limit(); ++i) {
 			buffer.put(i, (short) (buffer.get(i) * volume));
-		}
+		}*/
 		// call parent which will pass the audio onto next tool in chain
-		super.onAudioSamples(event);
+		//super.onAudioSamples(audio);
 		log.debug("VolumeAdjustTool onAudioSamples - end");
 	}
 

@@ -20,6 +20,7 @@ package org.red5.service.httpstream;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -41,12 +42,16 @@ import org.red5.xuggler.tool.VideoAdjustTool;
 import org.red5.xuggler.writer.HLSStreamWriter;
 import org.slf4j.Logger;
 
+import io.humble.video.Global;
 import io.humble.video.MediaAudio;
 import io.humble.video.Codec;
+import io.humble.video.PixelFormat;
+import io.humble.video.PixelFormat.Type;
 import io.humble.video.Rational;
 import io.humble.video.Muxer;
 import io.humble.video.MediaPicture;
 import io.humble.video.awt.MediaPictureConverter;
+import io.humble.video.awt.MediaPictureConverterFactory;
 import io.humble.video.javaxsound.StereoS16AudioConverter;
 
 /**
@@ -363,10 +368,11 @@ public class SegmentFacade {
 	 * @param timeUnit
 	 */
 	public void queueAudio(MediaAudio samples) {
-		dataQueue.add(new QueuedAudioData(samples.copyReference()));
+		QueuedAudioData qad = new QueuedAudioData(samples, samples.getTimeStamp(), Global.DEFAULT_TIME_UNIT);
+		dataQueue.add(qad);
 		// make a copy for group mux if one exists
 		if (mux != null) {
-			mux.pushData(streamName, isamples);
+			mux.pushData(streamName, qad.getSamples());
 		}
 	}
 
@@ -379,7 +385,7 @@ public class SegmentFacade {
 	 */
 	public void queueVideo(MediaPicture pic, long timeStamp, TimeUnit timeUnit) {
 		log.trace("Queue video");
-		dataQueue.add(new QueuedVideoData(pic, timeStamp, timeUnit));
+		dataQueue.add(new QueuedVideoData(pic,pic.getTimeStamp(),Global.DEFAULT_TIME_UNIT));
 	}
 
 	/**
@@ -478,11 +484,11 @@ public class SegmentFacade {
 		final short[] samples;
 
 		final long timeStamp;
-
-		final Rational timeUnit;
+		
+		final TimeUnit timeUnit;
 
 		@SuppressWarnings("unused")
-		QueuedAudioData(MediaAudio isamples) {
+		QueuedAudioData(MediaAudio isamples, long timeStamp, TimeUnit timeUnit) {
 			StereoS16AudioConverter sac = new StereoS16AudioConverter(isamples.getSampleRate(), isamples.getChannelLayout(), isamples.getFormat());
 			ByteBuffer buf = ByteBuffer.allocate(isamples.getNumSamples()*isamples.getBytesPerSample());
 			sac.toJavaAudio(buf, isamples);
@@ -491,7 +497,7 @@ public class SegmentFacade {
 			buf.flip();
 			this.samples = BufferUtils.byteToShortArray(decoded, 0, decoded.length, true);
 			this.timeStamp = isamples.getTimeStamp();
-			this.timeUnit = isamples.getTimeBase();
+			this.timeUnit = timeUnit;
 		}
 
 		/**
@@ -504,7 +510,7 @@ public class SegmentFacade {
 		/**
 		 * @return the timeUnit
 		 */
-		public Rational getTimeUnit() {
+		public TimeUnit getTimeUnit() {
 			return timeUnit;
 		}
 
@@ -519,7 +525,7 @@ public class SegmentFacade {
 	 */
 	private final class QueuedVideoData implements IQueuedData {
 
-		final byte[] picture;
+		final BufferedImage picture;
 
 		final int width;
 
@@ -529,35 +535,27 @@ public class SegmentFacade {
 
 		final TimeUnit timeUnit;
 
-		QueuedVideoData(MediaPicture pic) {
-			//TODO: This is a lot of work to get a byte[]. Why are we doing this?
-			/*MediaPictureConverter mpc = MediaPictureConverterFactory.createConverter(pic, PixelFormat.Type.PIX_FMT_YUV420P);
+		QueuedVideoData(MediaPicture pic, long timeStamp, TimeUnit timeUnit) {
+			MediaPictureConverter mpc = MediaPictureConverterFactory.createConverter("in_"+Thread.currentThread().getName(), pic);
 			BufferedImage bimg = new BufferedImage(pic.getWidth(), pic.getHeight(),  BufferedImage.TYPE_INT_RGB);
-			BufferedImage originalImage = mpc.toImage(bimg, pic);
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			ImageIO.write( originalImage, "jpg", baos );
-			baos.flush();
-			byte[] imageInByte = baos.toByteArray();
-			baos.close();
-			picture = new byte[buf.limit()];
-			buf.get(picture);
-			buf.flip();
-			//this.type = pic.getPixelType();
+			picture = mpc.toImage(bimg, pic);
 			this.width = pic.getWidth();
 			this.height = pic.getHeight();
 			this.timeStamp = timeStamp;
 			this.timeUnit = timeUnit;
+			mpc.delete();
 		}
-
-		/**
-		 * @return the picture
-		 */
-		public IVideoPicture getVideoPicture() {
-			IVideoPicture pic = IVideoPicture.make(IPixelFormat.Type.YUV420P, width, height);
-			pic.put(picture, 0, 0, picture.length);
-			pic.setComplete(true, IPixelFormat.Type.YUV420P, width, height, timeStamp);
-			return pic;
-		}
+		
+		   /**
+         * @return the picture
+         */
+        public MediaPicture getVideoPicture() {
+			MediaPictureConverter mpc = MediaPictureConverterFactory.createConverter("out_"+Thread.currentThread().getName(), Type.PIX_FMT_YUV420P, width, height);
+			MediaPicture output = MediaPicture.make(width, height, Type.PIX_FMT_YUV420P);
+        	mpc.toPicture(output, picture, timeStamp);
+            output.setComplete(true);
+            return output;
+        }
 
 		/**
 		 * @return the timeUnit
@@ -619,7 +617,7 @@ public class SegmentFacade {
 
 	}
 
-	public void queueAudio(MediaAudio copyReference) {
+	public void queueAudio(short[] samples, int clock, TimeUnit defaultTimeUnit) {
 		// TODO Auto-generated method stub
 		
 	}

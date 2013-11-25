@@ -21,6 +21,7 @@ package org.red5.xuggler.tool;
 import io.humble.video.AudioChannel.Layout;
 import io.humble.video.AudioFormat;
 import io.humble.video.AudioFormat.Type;
+import io.humble.video.Global;
 import io.humble.video.MediaAudio;
 import io.humble.video.MediaAudioResampler;
 
@@ -76,7 +77,7 @@ public class SampleRateAdjustTool implements GenericTool {
     			resampler.resample(out, samples);
     			log.trace("Out - samples: {} rate: {} channels: {}", out.getNumSamples(), out.getSampleRate(), out.getChannels());
     			// queue audio
-    			facade.queueAudio(out.copyReference());
+    			facade.queueAudio(out);
     			//out.delete();
     			samples.delete();
     		} else {
@@ -84,17 +85,8 @@ public class SampleRateAdjustTool implements GenericTool {
     		}
     		log.debug("SampleRateAdjustTool onAudioSamples - end");
 		} else {
-			facade.queueAudio(samples, event.getTimeStamp(), event.getTimeUnit());
+			facade.queueAudio(samples);
 		}
-	}
-
-	/* (non-Javadoc)
-	 * @see com.xuggle.mediatool.MediaToolAdapter#onClose(com.xuggle.mediatool.event.ICloseEvent)
-	 */
-	@Override
-	public void onClose(ICloseEvent event) {
-		close();
-		super.onClose(event);
 	}
 
 	public void close() {

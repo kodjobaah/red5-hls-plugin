@@ -42,17 +42,13 @@
 			<email>bowljoman@gmail.com</email>
 		</developer>
 	</developers>	
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	</properties>
+	   <properties>
+                <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        </properties>
 	<repositories>
 		<repository>
 			<id>Red5</id>
 			<url>http://red5.googlecode.com/svn/repository</url>
-		</repository>
-		<repository>
-			<id>my-local-repo</id>
-			<url>file://~/.m2/repository</url>
 		</repository>
 		<repository>
 			<id>repo1.maven.org</id>
@@ -93,6 +89,7 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-eclipse-plugin</artifactId>
+				<version>2.9</version>
 				<configuration>
 					<downloadSources>true</downloadSources>
 					<classpathContainers>
@@ -104,6 +101,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
 				<configuration>
 					<compilerVersion>1.7</compilerVersion>
 					<fork>true</fork>
@@ -126,12 +124,14 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-jar-plugin</artifactId>
+				<version>2.4</version>
 				<configuration>
 					<useDefaultManifestFile>true</useDefaultManifestFile>
 				</configuration>
 			</plugin>
 			<plugin>
 				<artifactId>maven-site-plugin</artifactId>
+				<version>3.3</version>
 				<configuration>
 					<reportPlugins>
 						<!-- Reporting on success / failure of unit tests -->
@@ -160,6 +160,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.9.1</version>
 				<executions>
 					<execution>
 						<id>javadoc-jar</id>
@@ -239,8 +240,7 @@
 			<dependency>
 				<groupId>org.red5</groupId>
 				<artifactId>red5-server</artifactId>
-				<version>1.0.2-SNAPSHOT</version>
-				<type>jar</type>
+				<version>1.0.2-RC3</version>
 			</dependency>
 			<dependency>
 				<groupId>org.bouncycastle</groupId>
