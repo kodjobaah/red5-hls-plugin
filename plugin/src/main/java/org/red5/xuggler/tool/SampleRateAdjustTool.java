@@ -21,11 +21,9 @@ package org.red5.xuggler.tool;
 import io.humble.video.AudioChannel.Layout;
 import io.humble.video.AudioFormat;
 import io.humble.video.AudioFormat.Type;
-import io.humble.video.Global;
 import io.humble.video.MediaAudio;
 import io.humble.video.MediaAudioResampler;
 
-import org.red5.server.stream.codec.AudioCodec;
 import org.red5.service.httpstream.SegmentFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

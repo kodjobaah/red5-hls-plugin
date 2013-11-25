@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 
 import org.red5.io.IoConstants;
 import org.red5.server.net.rtmp.event.VideoData.FrameType;
-import org.red5.server.stream.codec.VideoCodec;
 
 public class VideoFrame implements MediaFrame {
 
@@ -55,9 +54,9 @@ public class VideoFrame implements MediaFrame {
 			byte flgs = data.get();
 			data.rewind();
 			detectFrameType();
-			if ((flgs & 0x0f) == VideoCodec.H263.getId()) {
+			if ((flgs & 0x0f) == org.red5.codec.VideoCodec.H263.getId()) {
 				//log.debug("h.263 / Sorenson");
-			} else if ((flgs & 0x0f) == VideoCodec.AVC.getId()) {
+			} else if ((flgs & 0x0f) == org.red5.codec.VideoCodec.AVC.getId()) {
 				//log.debug("h.264 / AVC");
 				// keyframe
 				if (frameType == FrameType.KEYFRAME) {
