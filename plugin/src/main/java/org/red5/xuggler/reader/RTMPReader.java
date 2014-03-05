@@ -21,28 +21,17 @@
 package org.red5.xuggler.reader;
 
 
-
 import io.humble.video.Demuxer;
 import io.humble.video.DemuxerFormat;
-import io.humble.video.MediaAudio;
 import io.humble.video.MediaPacket;
-import io.humble.video.MediaPicture;
 import io.humble.video.KeyValueBag;
-
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
-
 import org.red5.service.httpstream.SegmentFacade;
 
-//import io.humble.video.IMediaReader;
-//import io.humble.video.MediaToolAdapter;
-//import io.humble.video.ToolFactory;
-//import io.humble.video.event.IAudioSamplesEvent;
-//import io.humble.video.event.ICloseEvent;
-//import io.humble.video.event.IVideoPictureEvent;
 
 /**
  * Reads media data from an RTMP source.
@@ -151,7 +140,7 @@ public class RTMPReader implements GenericReader {
 		    }
 		}
 	       
-	    }while (res >= 0);
+	    } while (res >= 0);
 	    log.info("Done demuxing");
 		
 	} catch (Throwable t) {
