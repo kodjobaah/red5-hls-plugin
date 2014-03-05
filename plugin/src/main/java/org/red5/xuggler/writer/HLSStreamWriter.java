@@ -23,15 +23,20 @@ import io.humble.video.AudioFormat.Type;
 import io.humble.video.Codec;
 import io.humble.video.Codec.ID;
 import io.humble.video.Coder;
+import io.humble.video.Decoder;
 import io.humble.video.Encoder;
 import io.humble.video.Global;
 import io.humble.video.MediaAudio;
 import io.humble.video.MediaPacket;
 import io.humble.video.MediaPicture;
 import io.humble.video.Muxer;
+import io.humble.video.MuxerFormat;
 import io.humble.video.MuxerStream;
+import io.humble.video.Demuxer;
+import io.humble.video.DemuxerStream;
 import io.humble.video.PixelFormat;
 import io.humble.video.Rational;
+import io.humble.video.KeyValueBag;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,593 +81,266 @@ import org.slf4j.LoggerFactory;
  */
 public class HLSStreamWriter implements IStreamWriter {
 
-	private static final Logger log = LoggerFactory.getLogger(HLSStreamWriter.class);
+    private static final Logger log = LoggerFactory.getLogger(HLSStreamWriter.class);
 
-	static {
-		io.humble.ferry.JNIMemoryManager.setMemoryModel(io.humble.ferry.JNIMemoryManager.MemoryModel.NATIVE_BUFFERS);
-	}
+    static {
+	io.humble.ferry.JNIMemoryManager.setMemoryModel(io.humble.ferry.JNIMemoryManager.MemoryModel.NATIVE_BUFFERS);
+    }
 
-	/** The default time base. */
-	private static final Rational DEFAULT_TIMEBASE = Rational.make(1, (int) Global.DEFAULT_PTS_PER_SECOND);
+    /** The default time base. */
+    private static final Rational DEFAULT_TIMEBASE = Rational.make(1, (int) Global.DEFAULT_PTS_PER_SECOND);
 
-	private SegmentFacade facade;
+    private SegmentFacade facade;
 
-	private final String outputUrl;
+    private final String outputUrl;
 
-	// the container
-	private Muxer container;
+    private final String streamName;
 
-	// the container format
-	//private Muxer containerFormat;
+    // the container
+    private Muxer container;
 
-	private MuxerStream audioStream;
+    // the container format
+    //private Muxer containerFormat;
 
-	private MuxerStream videoStream;
+    private MuxerStream audioStream;
 
-	private Encoder audioCoder;
+    private MuxerStream videoStream;
 
-	private Encoder videoCoder;
+    private Encoder audioCoder;
 
-	// true if the writer should ask FFMPEG to interleave media
-	private boolean forceInterleave = false;
+    private Encoder videoCoder;
 
-	private boolean audioComplete = false;
+    // true if the writer should ask FFMPEG to interleave media
+    private boolean forceInterleave = false;
 
-	private boolean videoComplete = false;
+    private boolean audioComplete = false;
 
-	private volatile double audioDuration;
+    private boolean videoComplete = false;
 
-	private volatile double videoDuration;
+    private volatile double audioDuration;
 
-	//TODO: implement private int videoBitRate = 360000;
+    private volatile double videoDuration;
 
-	private long prevAudioTime = 0L;
+    private volatile double lastNewFilePosition = 0;
+    private volatile double currentFilePosition = 0;
 
-	private long prevVideoTime = 0L;
+    //TODO: implement private int videoBitRate = 360000;
 
-	/**
-	 * Create a MediaWriter which will require subsequent calls to {@link #addVideoStream} and/or {@link #addAudioStream} to configure the
-	 * writer.  Streams may be added or further configured as needed until the first attempt to write data.
-	 *
-	 * @param streamName the stream name of the source
-	 */
-	public HLSStreamWriter(String streamName) {
-		outputUrl = MpegTsHandlerFactory.DEFAULT_PROTOCOL + ':' + streamName;
-	}
+    private long prevAudioTime = 0L;
+
+    private long prevVideoTime = 0L;
+    private int segmentSize = 10;
+
+    /**
+     * Create a MediaWriter which will require subsequent calls to {@link #addVideoStream} and/or {@link #addAudioStream} to configure the
+     * writer.  Streams may be added or further configured as needed until the first attempt to write data.
+     *
+     * @param streamName the stream name of the source
+     */
+    public HLSStreamWriter(String streamName) {
+	outputUrl = MpegTsHandlerFactory.DEFAULT_PROTOCOL + ':' + streamName;
+	this.streamName = streamName;
+    }
 	
-	public void setup(SegmentFacade segmentFacade, ID id, int outputAudioChannels, int outputSampleRate, Rational timeBase, ID id2, int outputWidth, int outputHeight) {
-		log.debug("setup {}", outputUrl);
-		this.facade = segmentFacade;
-		MpegTsIoHandler outputHandler = new MpegTsIoHandler(outputUrl, facade);
-		// create a container
-		container = Muxer.make(outputUrl, null, "mpegts");
-		MpegTsHandlerFactory.getFactory().registerStream(outputHandler, container);
-	}
+    public void setup(SegmentFacade segmentFacade) {
+	log.info("setup {}", outputUrl);
+	this.facade = segmentFacade;
+	MpegTsIoHandler outputHandler = new MpegTsIoHandler(outputUrl, facade);
+	// create a container
+	MuxerFormat muxerFormat = MuxerFormat.guessFormat("mpegts",null,null);
+	log.info(muxerFormat.toString());
+	container = Muxer.make(outputUrl, muxerFormat,null);
+	MpegTsHandlerFactory.getFactory().registerStream(outputHandler, container);
+    }
 
-	/** 
-	 * Add a audio stream.  The time base defaults to {@link #DEFAULT_TIMEBASE} and the audio format defaults to {@link
-	 * #DEFAULT_SAMPLE_FORMAT}.  The new {@link IStream} is returned to provide an easy way to further configure the stream.
-	 * 
-	 * @param streamId a format-dependent id for this stream
-	 * @param codec the codec to used to encode data, to establish the codec see {@link com.xuggle.xuggler.ICodec}
-	 * @param channelCount the number of audio channels for the stream
-	 * @param sampleRate sample rate in Hz (samples per seconds), common values are 44100, 22050, 11025, etc.
-	 *
-	 * @return audio index
-	 *
-	 * @throws IllegalArgumentException if inputIndex < 0, the stream id < 0, the codec is NULL or if the container is already open.
-	 * @throws IllegalArgumentException if width or height are <= 0
-	 * 
-	 * @see IContainer
-	 * @see IStream
-	 * @see IStreamCoder
-	 * @see ICodec
-	 */
-	public int addAudioStream(int streamId, Codec codec, int channelCount, int sampleRate) {
-		log.debug("addAudioStream {}", outputUrl);
-		// validate parameters
-		if (channelCount <= 0) {
-			throw new IllegalArgumentException("Invalid channel count " + channelCount);
-		}
-		if (sampleRate <= 0) {
-			throw new IllegalArgumentException("Invalid sample rate " + sampleRate);
-		}
-		// configure the stream coder
-		audioCoder = Encoder.make(codec);
-		// add the new stream at the correct index
-		container.addNewStream(audioCoder);
-		//if (audioStream == null) {
-		//	throw new RuntimeException("Unable to create stream id " + streamId + ", codec " + codec);
-		//}
-		//TODO: audioCoder -> something something -> (Codec.CodecCapability.CAP_EXPERIMENTAL);
-		audioCoder.setTimeBase(Rational.make(1, sampleRate));
-		audioCoder.setChannels(channelCount);
-		audioCoder.setSampleRate(sampleRate);
-		audioCoder.setSampleFormat(Type.SAMPLE_FMT_S16);
-		/*
-		 * TODO: Move to resampler
-		 * switch (sampleRate) {
-			case 44100:
-				if (channelCount == 2) {
-					audioCoder.setBitRate(128000);
-				} else {
-					audioCoder.setBitRate(64000);
-				}
-				break;
-			case 22050:
-				if (channelCount == 2) {
-					audioCoder.setBitRate(96000);
-				} else {
-					audioCoder.setBitRate(48000);
-				}
-				break;
-			default:
-				audioCoder.setBitRate(32000);
-				break;
-		}*/
-		//audioCoder.setBitRateTolerance((int) (audioCoder.getBitRate() / 2));
-		//audioCoder.setGlobalQuality(0);
-		//log.trace("Bitrate: {} tolerance: {}", audioCoder.getBitRate(), audioCoder.getBitRateTolerance());
-		log.trace("Time base: {} sample rate: {} stereo: {}", audioCoder.getTimeBase(), sampleRate, channelCount > 1);
-		log.debug("Added:\n{}", audioStream);
-		// return the new audio stream
-		return audioStream.getIndex();
-	}
+    public void encodeVideo(MediaPacket videoPacket, long timeStamp, TimeUnit timeUnit) {
+	log.info("encodeVideo {} timestamp {} timeunit {} ", outputUrl,timeStamp,timeUnit.toString());
 
-	/** 
-	 * Add a video stream.  The time base defaults to {@link #DEFAULT_TIMEBASE} and the pixel format defaults to {@link
-	 * #DEFAULT_PIXEL_TYPE}.  The new {@link IStream} is returned to provide an easy way to further configure the stream.
-	 * 
-	 * @param inputIndex the index that will be passed to {@link #onVideoPicture} for this stream
-	 * @param streamId a format-dependent id for this stream
-	 * @param codec the codec to used to encode data, to establish the codec see {@link com.xuggle.xuggler.ICodec}
-	 * @param width width of video frames
-	 * @param height height of video frames
-	 *
-	 * @return video index
-	 *
-	 * @throws IllegalArgumentException if inputIndex < 0, the stream id < 0, the codec is NULL or if the container is already open.
-	 * @throws IllegalArgumentException if width or height are <= 0
-	 * 
-	 * @see IContainer
-	 * @see IStream
-	 * @see IStreamCoder
-	 * @see ICodec
-	 */
-	public int addVideoStream(int streamId, Codec codec, Rational frameRate, int width, int height) {
-		log.debug("addVideoStream {}", outputUrl);
-		// validate parameters
-		if (width <= 0 || height <= 0) {
-			throw new IllegalArgumentException("Invalid video frame size [" + width + " x " + height + "]");
-		}
-		// configure the stream coder
-		videoCoder = Encoder.make(codec);
-		// add the new stream at the correct index
-		container.addNewStream(videoCoder);
-		//if (videoStream == null) {
-		//	throw new RuntimeException("Unable to create stream id " + streamId + ", codec " + codec);
-		//}
-		//videoCoder.setStandardsCompliance(IStreamCoder.CodecStandardsCompliance.COMPLIANCE_EXPERIMENTAL);
-		//videoCoder.setCodec(codec);
-		Rational timeBase = Rational.make(frameRate.getDenominator(), frameRate.getNumerator());
-		videoCoder.setTimeBase(timeBase);
-		timeBase.delete();
-		timeBase = null;
-		videoCoder.setWidth(width);
-		videoCoder.setHeight(height);
-		videoCoder.setPixelType(PixelFormat.Type.PIX_FMT_YUV420P);
-		if (videoCoder.getCodecID().equals(Codec.ID.CODEC_ID_H264)) {
-			log.debug("H.264 codec detected, attempting configure with preset file");
-			//TODO: videoCoder.setFlag(Coder.Flag.FLAG_QSCALE, false);
-			try {
-				InputStream in = SegmenterService.class.getResourceAsStream("mpegts-ipod320.properties");
-				Properties props = new Properties();
-				props.load(in);
-				//TODO: move all of this -> int retval = Configuration.configure(props, videoCoder);
-				//if (retval < 0) {
-				//	throw new RuntimeException("Could not configure coder from preset file");
-				//}
-				videoCoder.setProperty("nr", 0);
-				videoCoder.setProperty("mbd", 0);
-				// g / gop should be less than a segment so at least one key frame is in a segment
-				int gops = (int) (frameRate.getValue() / (facade.getSegmentTimeLimit() / 1000)); // (fps / segment length) == gops
-				videoCoder.setProperty("g", gops);
-				//TODO: videoCoder.setNumPicturesInGroupOfPictures(gops);
-				// previously used with mpeg-ts
-				videoCoder.setProperty("level", 30);
-				videoCoder.setProperty("async", 2);
-			} catch (IOException e) {
-				log.warn("Exception attempting to configure", e);
-			}
-		/* Doing H264 First
-		 * } else if (videoCoder.getCodecID().equals(Codec.ID.CODEC_ID_THEORA)) {
-			log.debug("Theora codec detected, attempting configure with presets");
-			videoCoder.setFlag(IStreamCoder.Flags.FLAG_QSCALE, false);
-			try {
-				InputStream in = SegmenterService.class.getResourceAsStream("libtheora-default.ffpreset");
-				Properties props = new Properties();
-				props.load(in);
-				int retval = Configuration.configure(props, videoCoder);
-				if (retval < 0) {
-					throw new RuntimeException("Could not configure coder from preset file");
-				}
-				videoCoder.setProperty("qscale", 6);
-				videoCoder.setProperty("sharpness", 0);
-				videoCoder.setProperty("mbd", 2);
-			} catch (IOException e) {
-				log.warn("Exception attempting to configure", e);
-			} */
-		}
-		//TODO: move to resampler 
-		//videoCoder.setBitRate(videoBitRate);
-		//videoCoder.setBitRateTolerance((int) (videoCoder.getBitRate() / 2));
-		//videoCoder.setGlobalQuality(0);
-		//videoCoder.setFlag(IStreamCoder.Flags.FLAG_QSCALE, true);
-		//log.trace("Bitrate: {} tolerance: {}", videoCoder.getBitRate(), videoCoder.getBitRateTolerance());
-		log.trace("Time base: {} frame rate: {}", videoCoder.getTimeBase(), frameRate.getValue());
-		//log.trace("GOP: {}", videoCoder.getNumPicturesInGroupOfPictures());
-		log.debug("Added:\n{}", videoStream);
-		// return the new video stream
-		return videoStream.getIndex();
-	}
 
-	private long audioTs;
-
-	public void encodeAudio(short[] samples, long timeStamp, TimeUnit timeUnit) {
-		log.debug("encodeAudio {}", outputUrl);
-		// verify parameters
-		if (null == samples) {
-			throw new IllegalArgumentException("NULL input samples");
-		}
-		if (Type.SAMPLE_FMT_S16 != audioCoder.getSampleFormat()) {
-			throw new IllegalArgumentException("stream is not 16 bit audio");
-		}
-		// establish the number of samples
-		long sampleCount = samples.length / audioCoder.getChannels();
-		// XXX dont encode until we have 2048 total samples (2048 mono / 4096 stereo)
-		audioTs += samples.length;
-		log.trace("Audio pts using samples: {} {}", audioTs, (audioCoder.getChannels() * 2));
-		// create the audio samples object and extract the internal buffer as an array
-		MediaAudio audioFrame = MediaAudio.make((int) sampleCount, audioCoder.getSampleRate(), audioCoder.getChannels(), audioCoder.getChannelLayout(), audioCoder.getSampleFormat());
-				//(sampleCount, audioCoder.getChannels());
-		// We allow people to pass in a null timeUnit for audio as a signal that time stamps are unknown.  This is a common
-		// case for audio data, and Xuggler should handle it if we set a invalid time stamp on the audio.
+	currentFilePosition = videoPacket.getTimeStamp() * videoPacket.getTimeBase().getValue();
+	// establish the stream, return silently if no stream returned
+	if (null != videoPacket) {
+	    // encode video picture
+	    videoComplete = videoPacket.isComplete();
+	    if (videoComplete) {
 		final long timeStampMicro;
 		if (timeUnit == null) {
-			timeStampMicro = Global.NO_PTS;
+		    timeStampMicro = Global.NO_PTS;
 		} else {
-			timeStampMicro = MICROSECONDS.convert(timeStamp, timeUnit);
+		    timeStampMicro = MICROSECONDS.convert(timeStamp, timeUnit);
 		}
-		// put the samples into the frame
-		//TODO: ?? -> audioFrame.put(samples, 0, 0, samples.length);
-		// set complete
-		//Don't we do isComplete?
-		//TODO: audioFrame.setComplete(true, sampleCount, audioCoder.getSampleRate(), audioCoder.getChannels(), audioCoder.getSampleFormat(), audioTs / (audioCoder.getChannels() * 2));
-		for (int consumed = 0; consumed < audioFrame.getNumSamples();) {
-			// convert the samples into a packet
-			MediaPacket audioPacket = MediaPacket.make();
-			// encode
-			//TODO: Fix int result = audioCoder.encodeAudio(audioPacket, audioFrame, consumed);
-			//System.out.printf("Flags a: %08x\n", audioCoder.getFlags());
-			/*if (result < 0) {
-				log.error("Failed to encode audio: {} samples: {}", getErrorMessage(result), audioFrame);
-				audioPacket.delete();
-				break;
-			}*/
-			//consumed += result;
-			audioComplete = audioPacket.isComplete();
-			if (audioComplete) {
-				log.trace("Audio timestamp {} us sample time: {}", timeStampMicro, (audioTs / 4) / 44.100);
-				// write the packet
-				writePacket(audioPacket);
-				// add the duration of our audio
-				double dur = (timeStampMicro + audioPacket.getDuration() - prevAudioTime) / 1000000d;
-				audioDuration += dur;
-				log.trace("Duration - audio: {}", dur);
-				prevAudioTime = timeStampMicro;
-				audioPacket.delete();
-			} else {
-				log.warn("Audio packet was not complete");
-			}
-		}
-		audioFrame.delete();
+		log.info("Video timestamp {} us", timeStampMicro);
+		// write packet
+		writePacket(videoPacket);
+		// add the duration of our video
+		double dur = (timeStampMicro + videoPacket.getDuration() - prevVideoTime) / 1000000d;
+		videoDuration += dur;
+		log.info("Duration - video: {}", dur);
+		videoPacket.delete();
+	    } else {
+		log.warn("Video packet was not complete");
+	    }
+	} else {
+	    throw new IllegalArgumentException("No video packet");
+	}
+    }
 
-		/**
-		// convert the samples into a packet
-		IPacket audioPacket = IPacket.make();
-		for (int consumed = 0; consumed < audioFrame.getNumSamples(); ) {
-			while ((consumed < audioFrame.getNumSamples()) && (!audioPacket.isComplete())) {
-				int result = audioCoder.encodeAudio(audioPacket, audioFrame, consumed);
-				//System.out.printf("Flags a: %08x\n", audioCoder.getFlags());
-				if (result < 0) {
-					log.error("Failed to encode audio: {} samples: {}", getErrorMessage(result), audioFrame);
-					audioPacket.delete();
-					return;
-				}
-				consumed += result;
-				audioComplete = audioPacket.isComplete();
-			}
-			if (audioComplete) {				
-				log.trace("Audio timestamp {} us", timeStampMicro);
-				// write the packet
-				writePacket(audioPacket);
-				// add the duration of our audio
-				double dur = (timeStampMicro + audioPacket.getDuration() - prevAudioTime) / 1000000d;
-				audioDuration += dur;
-				log.trace("Duration - audio: {}", dur);
-				prevAudioTime = timeStampMicro;
-				audioPacket.delete();
-			} else {
-				log.warn("Audio packet was not complete");
-			}
+    /**
+     * Write packet to the output container
+     * 
+     * @param packet the packet to write out
+     */
+    public void writePacket(MediaPacket packet) {
+	log.info("write packet - duration: {} timestamp: {}", packet.getDuration(), packet.getTimeStamp());
+	if (createNewSegment()) {
+	    log.info("New segment created: {}", facade.getActiveSegmentIndex());
+	}
+	if (container.write(packet, forceInterleave)) {
+	    log.info("Failed to write packet: {} force interleave: {}", packet, forceInterleave);
+	}
+    }
+
+    public void open(Demuxer reader) {
+	log.info("open {}", outputUrl);
+
+	KeyValueBag  meta = KeyValueBag.make();
+	meta.setValue("service_provider", "Red5 HLS");
+	meta.setValue("title", outputUrl.substring(outputUrl.indexOf(':') + 1));
+	meta.setValue("map", "0");
+	meta.setValue("segment_time", "" + facade.getSegmentTimeLimit() / 1000);
+	meta.setValue("segment_format", "mpegts");
+	meta.setValue("reset_timestamps", "0");
+
+
+	try {
+	    int n = reader.getNumStreams();
+	    for(int i =0; i < n; i++) {
+		DemuxerStream ds = null;
+		synchronized(reader) {
+		    ds = reader.getStream(i);
 		}
-		*/
+		Decoder d = ds.getDecoder();
+		log.info("----  MODEC"+d.toString());
+		container.addNewStream(d);
+
+	    }
+	    container.open(null, null);
+	} catch(InterruptedException e) {
+	    java.io.StringWriter sw = new java.io.StringWriter();
+	    e.printStackTrace(new java.io.PrintWriter(sw));
+	    String exceptionAsString = sw.toString();
+	    throw new RuntimeException("interruptedException:"+sw.toString());
+	    
+	} catch (IOException e) {
+	    java.io.StringWriter sw = new java.io.StringWriter();
+	    e.printStackTrace(new java.io.PrintWriter(sw));
+	    String exceptionAsString = sw.toString();
+	    throw new RuntimeException("IOException:"+sw.toString());
+
 	}
 
-	public void encodeVideo(MediaPicture picture) {
-		encodeVideo(picture, 0L, null);
-	}
+	log.info("writer opened");
 
-	public void encodeVideo(MediaPicture picture, long timeStamp, TimeUnit timeUnit) {
-		log.debug("encodeVideo {}", outputUrl);
-		// establish the stream, return silently if no stream returned
-		if (null != picture) {
-			MediaPacket videoPacket = MediaPacket.make();
-			// encode video picture
-			videoCoder.encodeVideo(videoPacket, picture);
-			//System.out.printf("Flags v: %08x\n", videoCoder.getFlags());
-			/*TODO: try/catch? now that there is no retval...
-			 * if (result < 0) {
-				log.error("{} Failed to encode video: {} picture: {}", new Object[] { result, getErrorMessage(result), picture });
-				videoPacket.delete();
-				return;
-			}*/
-			videoComplete = videoPacket.isComplete();
-			if (videoComplete) {
-				final long timeStampMicro;
-				if (timeUnit == null) {
-					timeStampMicro = Global.NO_PTS;
-				} else {
-					timeStampMicro = MICROSECONDS.convert(timeStamp, timeUnit);
-				}
-				log.trace("Video timestamp {} us", timeStampMicro);
-				// write packet
-				writePacket(videoPacket);
-				// add the duration of our video
-				double dur = (timeStampMicro + videoPacket.getDuration() - prevVideoTime) / 1000000d;
-				videoDuration += dur;
-				log.trace("Duration - video: {}", dur);
-				//double videoPts = (double) videoPacket.getDuration() * videoCoder.getTimeBase().getNumerator() / videoCoder.getTimeBase().getDenominator();
-				//log.trace("Video pts - calculated: {} reported: {}", videoPts, videoPacket.getPts());
-				prevVideoTime = timeStampMicro;
-				videoPacket.delete();
-			} else {
-				log.warn("Video packet was not complete");
-			}
-		} else {
-			throw new IllegalArgumentException("No picture");
-		}
-	}
+    }
 
-	/**
-	 * Write packet to the output container
-	 * 
-	 * @param packet the packet to write out
-	 */
-	private void writePacket(MediaPacket packet) {
-		log.trace("write packet - duration: {} timestamp: {}", packet.getDuration(), packet.getTimeStamp());
-		if (createNewSegment()) {
-			log.trace("New segment created: {}", facade.getActiveSegmentIndex());
-		}
-		if (container.write(packet, forceInterleave)) {
-			log.warn("Failed to write packet: {} force interleave: {}", packet, forceInterleave);
-		}
-		//TODO: determine if necessary -> container.flushPackets();
-		//packet.delete();
-	}
-
-	public void open() {
-		log.debug("open {}", outputUrl);
-		// create metadata
-		//TODO: necessary? ->
-		/*IMetaData meta = IMetaData.make();
-		meta.setValue("service_provider", "Red5 HLS");
-		meta.setValue("title", outputUrl.substring(outputUrl.indexOf(':') + 1));
-		meta.setValue("map", "0");
-		meta.setValue("segment_time", "" + facade.getSegmentTimeLimit() / 1000);
-		meta.setValue("segment_format", "mpegts");
-		//meta.setValue("reset_timestamps", "0"); // 1 or 0
-		IMetaData metaFail = IMetaData.make();*/
-		// open the container
-		try {
-			container.open(null, null);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		//	throw new IllegalArgumentException("Could not open: " + outputUrl);
-		/*} else {
-			if (log.isTraceEnabled()) {
-				if (metaFail.getNumKeys() > 0) {
-					Collection<String> keys = metaFail.getKeys();
-					for (String key : keys) {
-						log.trace("Failed to set {}", key);
-					}
-				}
-			} */
-			//			Properties props = new Properties();			
-			//			props.setProperty("map", "0");
-			//			//props.setProperty("segment_list type", "m3u8");
-			//			//props.setProperty("segment_list", "E:\\dev\\server\\red5-server-1.0\\playlist.m3u8");
-			//			//props.setProperty("segment_list_flags", "+live");
-			//			props.setProperty("segment_time", "4");
-			//			props.setProperty("segment_format", "mpegts");
-			//			//props.setProperty("reset_timestamps", "0"); // 1 or 0
-			//			int rv = Configuration.configure(props, container);
-			//			if (rv < 0) {
-			//				throw new RuntimeException("Could not configure the container for " + outputUrl + " " + getErrorMessage(rv));	
-			//			}			
-	}
-
-	public void start() {
-		log.debug("start {}", outputUrl);
-		/* open coders
-		int rv = -1;
-		if (outputStreamInfo.hasAudio()) {
-			rv = audioCoder.open();
-			if (rv < 0) {
-				throw new RuntimeException("Could not open stream " + audioStream + ": " + getErrorMessage(rv));
-			}
-			log.debug("Audio coder opened");
-		}
-		if (outputStreamInfo.hasVideo()) {
-			rv = videoCoder.open();
-			if (rv < 0) {
-				throw new RuntimeException("Could not open stream " + videoStream + ": " + getErrorMessage(rv));
-			}
-			log.debug("Video coder opened");
-		}
-		// write the header
-		rv = container.writeHeader();
-		if (rv >= 0) {
-			log.debug("Wrote header {}", outputUrl);
-		} else {
-			throw new RuntimeException("Error " + IError.make(rv) + ", failed to write header to container " + container);
-		}
-		*/
-	}
-
-	//TODO: Pick up here tomorrow 11/20/13
 	
-	/** 
-	 * Flush any remaining media data in the media coders.
-	 */
-	public void flush() {
-		log.debug("flush {}", outputUrl);
-		if (audioCoder.getState().equals(Coder.State.STATE_OPENED)) {
-			MediaPacket packet = MediaPacket.make();
-			while (!packet.isComplete()) {
-				audioCoder.encodeAudio(packet, null);
-			}
-			packet.delete();
-		}
-		// flush video coder
-		if (videoCoder.getState().equals(Coder.State.STATE_OPENED)) {
-			//TODO: where does this info live in H-IO log.debug("Dropped frames: {} predicted pts: {}", videoCoder.getNumDroppedFrames(), videoCoder.getNextPredictedPts());
-			MediaPacket packet = MediaPacket.make();
-			while (!packet.isComplete()) {
-				videoCoder.encodeVideo(packet, null);
-			}
-			packet.delete();
-		}
-		// flush the container
-		container.close();;
+    /** 
+     * Flush any remaining media data in the media coders.
+     */
+    public void flush() {
+	log.debug("flush {}", outputUrl);
+	if (audioCoder.getState().equals(Coder.State.STATE_OPENED)) {
+	    MediaPacket packet = MediaPacket.make();
+	    while (!packet.isComplete()) {
+		audioCoder.encodeAudio(packet, null);
+	    }
+	    packet.delete();
+	}
+	// flush video coder
+	if (videoCoder.getState().equals(Coder.State.STATE_OPENED)) {
+	    MediaPacket packet = MediaPacket.make();
+	    while (!packet.isComplete()) {
+		videoCoder.encodeVideo(packet, null);
+	    }
+	    packet.delete();
+	}
+	// flush the container
+	container.close();;
+    }
+
+    /** {@inheritDoc} */
+    public void close() {
+	log.debug("close {}", outputUrl);
+	MpegTsHandlerFactory.getFactory().deleteStream(outputUrl);
+
+	flush();
+	if(videoCoder.getState().equals(Coder.State.STATE_OPENED)){
+	    videoCoder.delete();
+	    videoCoder = null;
+	}
+	if(audioCoder.getState().equals(Coder.State.STATE_OPENED)){
+	    audioCoder.delete();
+	    audioCoder = null;
 	}
 
-	/** {@inheritDoc} */
-	public void close() {
-		log.debug("close {}", outputUrl);
-		MpegTsHandlerFactory.getFactory().deleteStream(outputUrl);
-		// flush coders
-		flush();
-		// write the trailer on the output container
-		//TODO: Do we do this anymore? if ((rv = container.writeTrailer()) < 0) {
-		//	log.error("Error {}, failed to write trailer to {}", IError.make(rv), outputUrl);
-		//}
-		// close the coders opened by this MediaWriter
-		/*if (container.hasVideo()) {
-			try {
-				if ((rv = videoCoder.close()) < 0) {
-					log.error("Error {}, failed close coder {}", getErrorMessage(rv), videoCoder);
-				}
-			} finally {
-				videoCoder.delete();
-			}
-		}
-		if (container.hasAudio()) {
-			try {
-				if ((rv = audioCoder.close()) < 0) {
-					log.error("Error {}, failed close coder {}", getErrorMessage(rv), audioCoder);
-				}
-			} finally {
-				audioCoder.delete();
-			}
-		}
-		// if we're supposed to, close the container
-		if ((rv = container.close()) < 0) {
-			throw new RuntimeException("error " + IError.make(rv) + ", failed close IContainer " + container + " for " + outputUrl);
-		}*/
-		if(videoCoder.getState().equals(Coder.State.STATE_OPENED)){
-			videoCoder.delete();
-			videoCoder = null;
-		}
-		if(audioCoder.getState().equals(Coder.State.STATE_OPENED)){
-			audioCoder.delete();
-			audioCoder = null;
-		}
-		// get the current segment, if one exists
-		Segment segment = facade.getSegment();
-		// mark it as "last" and close
-		if (segment != null && !segment.isLast()) {
-			// mark it as the last
-			segment.setLast(true);
-			segment.close();
-		}
+	// get the current segment, if one exists
+	Segment segment = facade.getSegment();
+	// mark it as "last" and close
+	if (segment != null && !segment.isLast()) {
+	    // mark it as the last
+	    segment.setLast(true);
+	    segment.close();
 	}
+    }
 
-	/**
-	 * Decides whether or not to create a new segment based on the current duration of audio or video.
-	 * 
-	 * @return true if a new segment is created and false otherwise
-	 */
-	private boolean createNewSegment() {
-		// get the current segment, if one exists
-		Segment segment = facade.getSegment();
-		if (segment != null) {
-			log.trace("Segment returned, check durations");
-			// convert segment limit to seconds
-			double limit = facade.getSegmentTimeLimit() / 1000d;
-			log.debug("Segment limit: {} audio: {} video: {}", limit, audioDuration, videoDuration);
-			if (audioDuration > limit || videoDuration > limit) {
-				log.trace("Duration matched, create new segment");
-				// use the greatest of the two durations
-				segment.setDuration(Math.max(audioDuration, videoDuration));
-				// reset
-				audioDuration -= audioDuration;
-				videoDuration -= videoDuration;
-				// create new segment
-				facade.createSegment();
-				return true;
-			}
-		} else {
-			log.trace("No segment returned, create first segment");
-			// first segment
-			facade.createSegment();
-			return true;
-		}
-		return false;
+    /**
+     * Decides whether or not to create a new segment based on the current duration of audio or video.
+     * 
+     * @return true if a new segment is created and false otherwise
+     */
+    private boolean createNewSegment() {
+	// get the current segment, if one exists
+	Segment segment = facade.getSegment();
+	if (segment != null) {
+	    log.info("Segment returned, check durations currentFilePosition {} lastNewFilePosition {}", currentFilePosition,lastNewFilePosition);
+	    // convert segment limit to seconds
+	    double limit = facade.getSegmentTimeLimit() / 1000d;
+	    log.info("Segment limit: {} audio: {} video: {}", limit, audioDuration, videoDuration);
+	    if ((currentFilePosition - lastNewFilePosition)  >= limit) {
+
+		int duration = (int) (currentFilePosition - lastNewFilePosition);
+		log.info("Duration matched, create new segment {}", duration);
+		segment.setDuration(duration);
+		facade.createSegment();
+		lastNewFilePosition = currentFilePosition;
+		return true;
+	    }
+	} else {
+	    log.info("No segment returned, create first segment");
+	    // first segment
+	    facade.createSegment();
+	    return true;
 	}
+	return false;
+    }
 
-	/**
-	 * Get the default time base we'll use on our encoders if one is not specified by the codec.
-	 * @return the default time base
-	 */
-	public Rational getDefaultTimebase() {
-		return DEFAULT_TIMEBASE.copyReference();
-	}
+    /**
+     * Get the default time base we'll use on our encoders if one is not specified by the codec.
+     * @return the default time base
+     */
+    public Rational getDefaultTimebase() {
+	return DEFAULT_TIMEBASE.copyReference();
+    }
 
-	/** {@inheritDoc} */
-	public String toString() {
-		return "HLSStreamWriter[" + outputUrl + "]";
-	}
+    /** {@inheritDoc} */
+    public String toString() {
+	return "HLSStreamWriter[" + outputUrl + "]";
+    }
 
-	@Override
-	public void setup(SegmentFacade facade, Muxer muxer) {
-		// TODO Auto-generated method stub
+    @Override
+    public void setup(SegmentFacade facade, Muxer muxer) {
+	// TODO Auto-generated method stub
 		
-	}
+    }
 
 }

@@ -16,15 +16,26 @@
  * limitations under the License.
  */
 
+
+
 package org.red5.xuggler.reader;
 
+
+
 import io.humble.video.Demuxer;
+import io.humble.video.DemuxerFormat;
 import io.humble.video.MediaAudio;
 import io.humble.video.MediaPacket;
 import io.humble.video.MediaPicture;
+import io.humble.video.KeyValueBag;
+
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Iterator;
+
+import org.red5.service.httpstream.SegmentFacade;
 
 //import io.humble.video.IMediaReader;
 //import io.humble.video.MediaToolAdapter;
@@ -38,271 +49,219 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Paul Gregoire (mondain@gmail.com)
  */
+
 public class RTMPReader implements GenericReader {
 
-	private Logger log = LoggerFactory.getLogger(RTMPReader.class);
+    private Logger log = LoggerFactory.getLogger(RTMPReader.class);
+    private Demuxer reader;
+    private String inputUrl;
+    private int inputWidth;
+    private int inputHeight;
+    private int inputSampleRate;
+    private int inputChannels;
+    private boolean audioEnabled = true;
+    private boolean videoEnabled = true;
+    private boolean keyFrameReceived;
 
-	private Demuxer reader;
+    // time at which we started reading
+    private long startTime;
 
-	private String inputUrl;
+    // total samples read
+    private volatile long audioSamplesRead;
 
-	private int inputWidth;
+    // total frames read
+    private volatile long videoFramesRead;
+    private boolean closed = true;
 
-	private int inputHeight;
+    private SegmentFacade facade = null;
 
-	private int inputSampleRate;
+    public RTMPReader() {
 
-	private int inputChannels;
+    }
 
-	private boolean audioEnabled = true;
+    public RTMPReader(SegmentFacade facade, String url) {
+	this.facade = facade;
+	inputUrl = url;
+    }
+    public void init() {
+	log.info("Input url: {}", inputUrl);
+	// url only
+	reader = Demuxer.make();
+	
+	reader.setReadRetryCount(0);
+	reader.setInputBufferLength(4096);
+	reader.setProperty("analyzeduration", 0);
+	DemuxerFormat df = DemuxerFormat.findFormat("flv");
 
-	private boolean videoEnabled = true;
-
-	private boolean keyFrameReceived;
-
-	// time at which we started reading
-	private long startTime;
-
-	// total samples read
-	private volatile long audioSamplesRead;
-
-	// total frames read
-	private volatile long videoFramesRead;
-
-	private boolean closed = true;
-
-	public RTMPReader() {
+	try  {
+	    log.info("before trying to load");
+	    reader.open(inputUrl,df,true,true,null,null);
+	    log.info("able to open reader");
+	} catch (java.lang.InterruptedException ie) {
+	    throw new RuntimeException("Unable to Open Reader:"+ie.getMessage());
+	} catch (java.io.IOException io) {
+	    throw new RuntimeException("Unable to Open Reader:"+io.getMessage());
 	}
 
-	public RTMPReader(String url) {
-		inputUrl = url;
+    }
+
+    public void stop() {
+	log.debug("Stop");
+	if (reader != null) {
+	    try {
+		reader.close();
+	    } catch (Exception e) {
+		log.warn("Exception closing reader", e);
+	    } finally {
+		closed = true;
+	    }
+	    reader = null;
 	}
+    }
 
-	public void init() {
-		log.debug("Input url: {}", inputUrl);
-		/*
-		IContainerFormat format = IContainerFormat.make();
-		format.setInputFormat("flv");
-		IContainer container = IContainer.make(format);
-		container.setReadRetryCount(0);
-		container.setInputBufferLength(0);
-		container.setProperty("strict", "experimental");
-		container.setProperty("analyzeduration", 0); // int = specify how many microseconds are analyzed to probe the input (from 0 to INT_MAX)
-		if (container.open(inputUrl, IContainer.Type.READ, null, false, false) < 0) {
-		    throw new RuntimeException("Unable to open read container");
-		}		
-		reader = ToolFactory.makeReader(container);
-		*/
+    public void run() {
+	log.info("RTMPReader - run");
+	// read and decode packets from the source
+	
+	log.info("Starting reader loop");
+	startTime = System.currentTimeMillis();
 
-		// url only
-		reader = Demuxer.make();
-		//TODO: Determine necessity -> reader.setCloseOnEofOnly(false);
-		//TODO: implement in reader.open() -> reader.setQueryMetaData(true);
-		//TODO: implement in reader.open() -> reader.setAddDynamicStreams(false);
+	// open for business
+	closed = false;
+	int packetsRead = 0;
 
-		// get the container
-		reader.setReadRetryCount(0);
-		reader.setInputBufferLength(0);
-		reader.setProperty("analyzeduration", 0); // int = specify how many microseconds are analyzed to probe the input (from 0 to INT_MAX)
-		//		container.setProperty("probesize", 1024); // int = set probing size in bytes (from 32 to INT_MAX)
-		//		container.setProperty("fpsprobesize", 4); // int = number of frames used to probe
-		//		container.setPreload(1);
-		//		IContainerFormat format = container.getContainerFormat();
-		//		format.setInputFormat("flv");
-		//		container.setFormat(format);
+	try {
+	    
+	    boolean start =  true;
+	    int res = -1;
+	    do {
+		if (!start) {
+		    long elapsedMillis = (System.currentTimeMillis() - startTime);
+		    log.info("Reads - frames: {} samples: {}", videoFramesRead, audioSamplesRead);
+		    log.info("Reads - packets: {} elapsed: {} ms", packetsRead++, elapsedMillis);
+		}else {
+		    start = false;
+		}
+		synchronized(reader) {
+		    MediaPacket packet = MediaPacket.make();
+		    res = reader.read(packet);
+		    if (res == 0) {
+		        log.info("adding packets to queue:["+res+"]");
+			facade.queueVideo(packet);
+		    }
+		}
+	       
+	    }while (res >= 0);
+	    log.info("Done demuxing");
 		
-		//TODO -> determine what we're trying to do here ->
-		/*if (videoEnabled) {
-			// have the reader create a buffered image that others can reuse
-			//reader.setBufferedImageTypeToGenerate(BufferedImage.TYPE_3BYTE_BGR);
-		} else {
-			reader.setBufferedImageTypeToGenerate(-1);
-		}*/
-		
-		//add this as the first listener
-		//TODO: [#1000] See if we need to dupe this behavior for plugin functionality -> reader.addListener(this);
+	} catch (Throwable t) {
+	    log.warn("Exception closing reader", t);
 	}
+	log.info("End of reader loop");
+	stop();
+	log.info("RTMPReader - end");
+    }
 
-	public void stop() {
-		log.debug("Stop");
-		if (reader != null) {
-			//TODO: as [#1000] -> reader.removeListener(this);
-			try {
-				reader.close();
-			} catch (Exception e) {
-				log.warn("Exception closing reader", e);
-			} finally {
-				closed = true;
-			}
-			reader = null;
-		}
-	}
+    
+    public void onClose() {
+	log.debug("Reader close");
+	this.stop();
+    }
 
-	public void run() {
-		log.debug("RTMPReader - run");
-		// read and decode packets from the source
-		log.trace("Starting reader loop");
+    public String getInputUrl() {
+	return inputUrl;
+    }
+    
+    public void setInputUrl(String inputUrl) {
+	this.inputUrl = inputUrl;
+    }
 
-		//		IContainer container = reader.getContainer();
-		//		IPacket packet = IPacket.make();
-		//      while (container.readNextPacket(packet) >= 0 && !packet.isKeyPacket()) {
-		//			log.debug("Looking for key packet..");        	
-		//      }
-		//      packet.delete();
+    /**
+     * @return the inputWidth
+     */
+    public int getInputWidth() {
+	return inputWidth;
+    }
 
-		// track start time
-		startTime = System.currentTimeMillis();
-		// open for business
-		closed = false;
-		//
-		int packetsRead = 0;
-		// error holder
-		//TODO: [#1001] determine how we're bringin this funcitonality for IError err = null;
-		//TODO: [#1003] where is the packet? let's make it?
-		MediaPacket packet = MediaPacket.make();
-		try {
-			// packet read loop
-			if (log.isTraceEnabled()) {
-				while (reader.read(packet) > 0) {
-					//TODO: [#1002] determine if dropping this metric under isTrace is more appropriate ->
-					long elapsedMillis = (System.currentTimeMillis() - startTime);
-					log.trace("Reads - frames: {} samples: {}", videoFramesRead, audioSamplesRead);
-					log.trace("Reads - packets: {} elapsed: {} ms", packetsRead++, elapsedMillis);
-				}
-			}else{
-				while (reader.read(packet) > 0) {
-					//do nothing, for great speed and profit!
-				}
-				log.trace("Done demuxing");
-			}
-		} catch (Throwable t) {
-			log.warn("Exception closing reader", t);
-		}
-		log.trace("End of reader loop");
-		stop();
-		log.trace("RTMPReader - end");
-	}
+    /**
+     * @return the inputHeight
+     */
+    public int getInputHeight() {
+	return inputHeight;
+    }
 
-	public void onAudioSamples(MediaAudio audio) {
-		log.trace("Reader onAudioSamples");
-		if (audioEnabled) {
-			// increment our count
-			audioSamplesRead += audio.getNumSamples();
-			// pass the even up the chain
-			//TODO: [#1004] implement? super.onAudioSamples(event);
-		}
-	}
+    /**
+     * @return the inputSampleRate
+     */
+    public int getInputSampleRate() {
+	return inputSampleRate;
+    }
 
-	public void onVideoPicture(MediaPicture picture) {
-		log.trace("Reader onVideo");
-		if (videoEnabled) {
-			// look for a key frame
-			keyFrameReceived = picture.isKey() ? true : keyFrameReceived;
-			// once we have had one, proceed
-			if (keyFrameReceived) {
-				videoFramesRead += 1;
-				//TODO: #[1006] implement? super.onVideoPicture(event);
-			}
-		}
-	}
+    /**
+     * @return the inputChannels
+     */
+    public int getInputChannels() {
+	return inputChannels;
+    }
 
-	public void onClose() {
-		log.debug("Reader close");
-		this.stop();
-	}
+    /**
+     * @return the reader
+     */
+    public Demuxer getReader() {
+	return reader;
+    }
 
-	public String getInputUrl() {
-		return inputUrl;
-	}
 
-	public void setInputUrl(String inputUrl) {
-		this.inputUrl = inputUrl;
-	}
+    /**
+     */
+    public void disableAudio() {
+	this.audioEnabled = false;
+    }
 
-	/**
-	 * @return the inputWidth
-	 */
-	public int getInputWidth() {
-		return inputWidth;
-	}
+    /**
+     */
+    public void disableVideo() {
+	this.videoEnabled = false;
+    }
 
-	/**
-	 * @return the inputHeight
-	 */
-	public int getInputHeight() {
-		return inputHeight;
-	}
+    /**
+     * @return the audioEnabled
+     */
+    public boolean isAudioEnabled() {
+	return audioEnabled;
+    }
 
-	/**
-	 * @return the inputSampleRate
-	 */
-	public int getInputSampleRate() {
-		return inputSampleRate;
-	}
+    /**
+     * @return the videoEnabled
+     */
+    public boolean isVideoEnabled() {
+	return videoEnabled;
+    }
 
-	/**
-	 * @return the inputChannels
-	 */
-	public int getInputChannels() {
-		return inputChannels;
-	}
+    /**
+     * Returns whether or not the reader is closed.
+     * 
+     * @return true if closed or reader does not exist
+     */
+    public boolean isClosed() {
+	return closed;
+    }
 
-	/**
-	 * @return the reader
-	 */
-	public Demuxer getReader() {
-		return reader;
-	}
+    /**
+     * Returns true if data has been read from the source.
+     * 
+     * @return
+     */
+    public boolean hasReadData() {
+	return audioSamplesRead > 0 || videoFramesRead > 0;
+    }
 
-	/**
-	 */
-	public void disableAudio() {
-		this.audioEnabled = false;
-	}
-
-	/**
-	 */
-	public void disableVideo() {
-		this.videoEnabled = false;
-	}
-
-	/**
-	 * @return the audioEnabled
-	 */
-	public boolean isAudioEnabled() {
-		return audioEnabled;
-	}
-
-	/**
-	 * @return the videoEnabled
-	 */
-	public boolean isVideoEnabled() {
-		return videoEnabled;
-	}
-
-	/**
-	 * Returns whether or not the reader is closed.
-	 * 
-	 * @return true if closed or reader does not exist
-	 */
-	public boolean isClosed() {
-		return closed;
-	}
-
-	/**
-	 * Returns true if data has been read from the source.
-	 * 
-	 * @return
-	 */
-	public boolean hasReadData() {
-		return audioSamplesRead > 0 || videoFramesRead > 0;
-	}
-
-	/**
-	 * @return the keyFrameReceived
-	 */
-	public boolean isKeyFrameReceived() {
-		return keyFrameReceived;
-	}
+    /**
+     * @return the keyFrameReceived
+     */
+    public boolean isKeyFrameReceived() {
+	return keyFrameReceived;
+    }
 
 }
+

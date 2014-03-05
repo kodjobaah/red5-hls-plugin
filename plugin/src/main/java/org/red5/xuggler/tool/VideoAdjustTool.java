@@ -72,7 +72,7 @@ public class VideoAdjustTool implements GenericTool {
 				//check complete
 				if (out.isComplete()) {
 					// queue video
-					facade.queueVideo(out, out.getTimeStamp(), Global.DEFAULT_TIME_UNIT);
+				    //					facade.queueVideo(out, out.getTimeStamp(), Global.DEFAULT_TIME_UNIT);
 					in.delete();
 				} else {
 					log.warn("Resampled picture was not marked as complete");
@@ -84,7 +84,7 @@ public class VideoAdjustTool implements GenericTool {
 			log.debug("VideoAdjustTool onVideoPicture - end");
 		} else {
 			// queue video
-			facade.queueVideo(in, in.getTimeStamp(), Global.DEFAULT_TIME_UNIT);
+		    //			facade.queueVideo(in, in.getTimeStamp(), Global.DEFAULT_TIME_UNIT);
 		}
 	}
 

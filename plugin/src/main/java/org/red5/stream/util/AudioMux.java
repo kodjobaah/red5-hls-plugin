@@ -95,7 +95,7 @@ public class AudioMux {
 		feeder.setDaemon(true);
 		feeder.start();
 	}
-	
+
 	public void stop() {
 		eofm = true;
 		clear();
@@ -275,7 +275,7 @@ public class AudioMux {
 				result = result < samplesCount ? result : samplesCount;
 			}
 		}
-		log.debug("Result size: {}", result);
+		//log.debug("Result size: {}", result);
 		return result;
 	}
 

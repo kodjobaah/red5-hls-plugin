@@ -45,7 +45,7 @@ public class MuxService {
 	 */
 	public void start(IScope scope) {
 		String scopeName = scope.getName();
-		log.debug("Start mux for {} scope", scopeName);
+		log.info("Start mux for {} scope", scopeName);
 		// if a different output sample rate is needed, add it to the scope attributes
 		int outputSampleRate = 44100;
 		if (scope.hasAttribute("outputSampleRate")) {
@@ -75,7 +75,7 @@ public class MuxService {
 	 * @param scope
 	 */
 	public void stop(IScope scope) {
-		log.debug("Stop mux for {} scope", scope.getName());
+		log.info("Stop mux for {} scope", scope.getName());
 		AudioMux mux = muxMap.remove(scope.getName());
 		mux.stop();
 	}

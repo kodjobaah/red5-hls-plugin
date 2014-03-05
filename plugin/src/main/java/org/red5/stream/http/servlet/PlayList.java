@@ -61,7 +61,7 @@ public class PlayList extends HttpServlet {
 	private static SegmenterService service;
 
 	// number of segments that must exist before displaying any in the playlist
-	private int minimumSegmentCount = 2;
+	private int minimumSegmentCount = 1;
 
 	@Override
 	public void init(ServletConfig config) throws ServletException {
@@ -130,17 +130,17 @@ public class PlayList extends HttpServlet {
 		String servletPath = request.getServletPath();
 		//get the requested stream
 		final String streamName = servletPath.substring(1, servletPath.indexOf(".m3u8"));
-		log.debug("Request for stream: {} playlist", streamName);
+		log.info("Request for stream: {} playlist", streamName);
 		//check for the stream
 		if (service.isAvailable(streamName)) {
-			log.debug("Stream: {} is available", streamName);
+			log.info("Stream: {} is available", streamName);
 			// get the segment count
 			int count = service.getSegmentCount(streamName);
-			log.debug("Segment count: {}", count);
+			log.info("Segment count: {}", count);
 			// check for minimum segment count and if we dont match or exceed
 			// wait for (minimum segment count * segment duration) before returning
 			if (count < minimumSegmentCount) {
-				log.debug("Starting wait loop for segment availability");
+				log.info("Starting wait loop for segment availability");
 				long maxWaitTime = minimumSegmentCount * service.getSegmentTimeLimit();
 				long start = System.currentTimeMillis();
 				do {
@@ -178,7 +178,7 @@ public class PlayList extends HttpServlet {
 					Segment segment = segments[s];
 					// get sequence number
 					int sequenceNumber = segment.getIndex();
-					log.trace("Sequence number: {}", sequenceNumber);
+					log.info("Sequence number: {}", sequenceNumber);
 					sb.append(String.format("#EXTINF:%.1f, segment\n%s_%s.ts\n", segment.getDuration(), streamName, sequenceNumber));
 					// are we on the last segment?
 					if (segment.isLast()) {
@@ -192,12 +192,12 @@ public class PlayList extends HttpServlet {
 				writer.write(m3u8);
 				writer.flush();
 			} else {
-				log.trace("Minimum segment count not yet reached, currently at: {}", count);
+				log.info("Minimum segment count not yet reached, currently at: {}", count);
 				response.setIntHeader("Retry-After", 60);
 				response.sendError(503, "Not enough segments available for " + streamName);
 			}
 		} else {
-			log.debug("Stream: {} is not available", streamName);
+			log.info("Stream: {} is not available", streamName);
 			response.sendError(404, "No playlist for " + streamName);
 		}
 	}
