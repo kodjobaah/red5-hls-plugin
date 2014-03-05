@@ -42,16 +42,26 @@
 			<email>bowljoman@gmail.com</email>
 		</developer>
 	</developers>	
-	
-	
-	   <properties>
-                <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        </properties>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<spring.version>3.1.4.RELEASE</spring.version>
+		<mina.version>2.0.7</mina.version>
+		<mina.version-integration>2.0.7</mina.version-integration>
+		<slf4j.version>1.7.5</slf4j.version>
+		<logback.version>1.0.13</logback.version>
+		<junit.version>4.10</junit.version>
+		<xuggler.version>5.4</xuggler.version>
+		<red5-server.version>1.0.2-RC4</red5-server.version>
+	</properties>
 	<repositories>
 		<repository>
 			<id>Red5</id>
 			<url>http://red5.googlecode.com/svn/repository</url>
 		</repository>
+		<repository>
+			<id>Xuggle</id>
+			<url>http://xuggle.googlecode.com/svn/trunk/repo/share/java/</url>
+		</repository>		
 		<repository>
 			<id>repo1.maven.org</id>
 			<url>http://repo1.maven.org/maven2</url>
@@ -89,214 +99,9 @@
 		<defaultGoal>install</defaultGoal>
 		<directory>${basedir}/target</directory>
 		<plugins>
-		
-		<plugin>
-				<groupId>de.smartics.maven.plugin</groupId>
-				<artifactId>smartics-jboss-modules-maven-plugin</artifactId>
-				<version>0.2.0</version>
-				<executions>
-					<execution>
-						<id>create-modules-archive</id>
-						<goals>
-							<goal>create-modules-archive</goal>
-						</goals>
-						<phase>package</phase>
-						<configuration>
-							<targetFolder>${project.build.directory}/hls-plugin</targetFolder>
-							<followOptionalDependencies>false</followOptionalDependencies>
-							<dependencyExcludes>
-								<exclude>
-									<groupId>jboss.web</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.apache.mina.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.jboss.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.eclipse.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.glassfish.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.apache.directory.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.apache.geronimo.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.apache.httpcomponents.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>log4j</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.apache.myfaces.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.apache.tomcat.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-beanutils</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-cli</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-codec</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.apache.commons.collections.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.apache.commons.daemon.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-digester</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-fileupload</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-httpclient</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-io</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-lang</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-logging</groupId>
-								</exclude>
-								<exclude>
-									<groupId>commons-pool</groupId>
-								</exclude>
-								<exclude>
-									<groupId>com.sun.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>javax.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>ant</groupId>
-								</exclude>
-								<exclude>
-									<groupId>antlr</groupId>
-								</exclude>
-								<exclude>
-									<groupId>asm.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>backport-util-concurrent</groupId>
-								</exclude>
-								<exclude>
-									<groupId>bouncycastle.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>cglib</groupId>
-								</exclude>
-								<exclude>
-									<groupId>eu.infomas.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>jdbm</groupId>
-								</exclude>
-								<exclude>
-									<groupId>jdom</groupId>
-								</exclude>
-								<exclude>
-									<groupId>jug</groupId>
-								</exclude>
-								<exclude>
-									<groupId>junit</groupId>
-								</exclude>
-								<exclude>
-									<groupId>oro</groupId>
-								</exclude>
-								<exclude>
-									<groupId>rome</groupId>
-								</exclude>
-								<exclude>
-									<groupId>stax</groupId>
-								</exclude>
-								<exclude>
-									<groupId>struts</groupId>
-								</exclude>
-								<exclude>
-									<groupId>xml-apis</groupId>
-								</exclude>
-								<exclude>
-									<groupId>xml-security</groupId>
-								</exclude>
-								<exclude>
-									<groupId>xpp3</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.aspectj.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.bouncycastle.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.codehaus.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.dom4j.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.freemarker.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.hibernate.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.jasig.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.jaxen.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.mortbay.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.openid4java.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.openxri.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>org.slf4j.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>com.google.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>com.ibm.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>com.lowagie.*</groupId>
-								</exclude>
-								<exclude>
-									<groupId>com.thoughtworks.*</groupId>
-								</exclude>
-							</dependencyExcludes>
-						</configuration>
-					</execution>
-				</executions>
-				<dependencies>
-					<dependency>
-						<groupId>de.smartics.config</groupId>
-						<artifactId>config-smartics-jboss-modules</artifactId>
-						<version>2.1.0-SNAPSHOT</version>
-					</dependency>
-				</dependencies>
-			</plugin>
 			<plugin>
 				<artifactId>maven-eclipse-plugin</artifactId>
-				<version>2.9</version>
+                                <version>2.9</version>
 				<configuration>
 					<downloadSources>true</downloadSources>
 					<classpathContainers>
@@ -308,7 +113,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.1</version>
+ 			        <version>3.1</version>
 				<configuration>
 					<compilerVersion>1.7</compilerVersion>
 					<fork>true</fork>
@@ -331,7 +136,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.4</version>
+                                <version>2.4</version>
 				<configuration>
 					<useDefaultManifestFile>true</useDefaultManifestFile>
 				</configuration>
@@ -367,7 +172,6 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>2.9.1</version>
 				<executions>
 					<execution>
 						<id>javadoc-jar</id>
@@ -403,11 +207,13 @@
 						</tag>
 					</tags>
 				</configuration>
+                                <version>2.9.1</version>
 			</plugin>
+
 			<plugin>
 				<groupId>org.apache.felix</groupId>
 				<artifactId>maven-bundle-plugin</artifactId>
-				<version>2.3.7</version>
+				<version>2.4.0</version>
 				<extensions>true</extensions>
 			</plugin>
 		</plugins>
@@ -447,7 +253,8 @@
 			<dependency>
 				<groupId>org.red5</groupId>
 				<artifactId>red5-server</artifactId>
-				<version>1.0.2-RC3</version>
+				<version>${red5-server.version}</version>
+				<type>jar</type>
 			</dependency>
 			<dependency>
 				<groupId>org.bouncycastle</groupId>
@@ -457,7 +264,7 @@
 			<dependency>
 				<groupId>org.slf4j</groupId>
 				<artifactId>slf4j-api</artifactId>
-				<version>1.7.5</version>
+				<version>${slf4j.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.jboss.spec</groupId>
@@ -469,13 +276,13 @@
 			<dependency>
 				<groupId>org.apache.mina</groupId>
 				<artifactId>mina-parent</artifactId>
-				<version>2.0.7</version>
+				<version>${mina.version}</version>
 				<type>pom</type>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-aop</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -486,7 +293,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-asm</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -497,7 +304,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-beans</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -508,7 +315,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-context</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -519,7 +326,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-context-support</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -530,7 +337,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-core</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -541,7 +348,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-expression</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -552,7 +359,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-tx</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -563,7 +370,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-web</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -574,7 +381,7 @@
 			<dependency>
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-test</artifactId>
-				<version>3.1.4.RELEASE</version>
+				<version>${spring.version}</version>
 				<scope>test</scope>
 				<exclusions>
 					<exclusion>
@@ -591,7 +398,7 @@
 			<dependency>
 				<groupId>junit</groupId>
 				<artifactId>junit</artifactId>
-				<version>4.10</version>
+				<version>${junit.version}</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
@@ -621,27 +428,27 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>jcl-over-slf4j</artifactId>
-			<version>1.7.5</version>
+			<version>${slf4j.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>jul-to-slf4j</artifactId>
-			<version>1.7.5</version>
+			<version>${slf4j.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>log4j-over-slf4j</artifactId>
-			<version>1.7.5</version>
+			<version>${slf4j.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-core</artifactId>
-			<version>1.0.13</version>
+			<version>${logback.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
-			<version>1.0.13</version>
+			<version>${logback.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-cli</groupId>
@@ -651,13 +458,13 @@
 		<dependency>
 			<groupId>org.apache.mina</groupId>
 			<artifactId>mina-core</artifactId>
-			<version>2.0.7</version>
+			<version>${mina.version}</version>
 			<type>bundle</type>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.mina</groupId>
 			<artifactId>mina-integration-jmx</artifactId>
-			<version>2.0.7</version>
+			<version>${mina.version}</version>
 			<type>bundle</type>
 			<exclusions>
 				<exclusion>
@@ -669,7 +476,7 @@
 		<dependency>
 			<groupId>org.apache.mina</groupId>
 			<artifactId>mina-integration-beans</artifactId>
-			<version>2.0.7</version>
+			<version>${mina.version}</version>
 			<type>bundle</type>
 		</dependency>
 		<dependency>
@@ -744,10 +551,10 @@
 			<artifactId>gson</artifactId>
 			<version>2.1</version>
 			<scope>compile</scope>
-		</dependency>		           
+		</dependency>		
 		<dependency>
 			<groupId>io.humble</groupId>
-			<artifactId>humble-video-arch-x86_64-apple-darwin12</artifactId>
+			<artifactId>humble-video-arch-x86_64-pc-linux-gnu6</artifactId>
 			<version>0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
@@ -755,6 +562,18 @@
 			<artifactId>humble-video-noarch</artifactId>
 			<version>0.1-SNAPSHOT</version>
 		</dependency>
+<!--
+        <dependency>
+            <groupId>xuggle</groupId>
+            <artifactId>xuggle-xuggler</artifactId>
+			<version>${xuggler.version}</version>
+        </dependency>           
+		<dependency>
+			<groupId>xuggle</groupId>
+			<artifactId>xuggle-utils</artifactId>
+			<version>1.22</version>
+		</dependency>		
+-->
 	</dependencies>
 	<profiles>
 		<profile>

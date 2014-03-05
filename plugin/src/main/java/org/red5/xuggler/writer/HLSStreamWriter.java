@@ -21,26 +21,17 @@ package org.red5.xuggler.writer;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import io.humble.video.AudioFormat.Type;
 import io.humble.video.Codec;
-import io.humble.video.Codec.ID;
-import io.humble.video.Coder;
 import io.humble.video.Decoder;
-import io.humble.video.Encoder;
-import io.humble.video.Global;
-import io.humble.video.MediaAudio;
 import io.humble.video.MediaPacket;
-import io.humble.video.MediaPicture;
 import io.humble.video.Muxer;
 import io.humble.video.MuxerFormat;
 import io.humble.video.MuxerStream;
 import io.humble.video.Demuxer;
 import io.humble.video.DemuxerStream;
-import io.humble.video.PixelFormat;
 import io.humble.video.Rational;
 import io.humble.video.KeyValueBag;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.red5.server.api.stream.IStream;
@@ -88,8 +79,6 @@ public class HLSStreamWriter implements IStreamWriter {
     }
 
     /** The default time base. */
-    private static final Rational DEFAULT_TIMEBASE = Rational.make(1, (int) Global.DEFAULT_PTS_PER_SECOND);
-
     private SegmentFacade facade;
 
     private final String outputUrl;
@@ -100,15 +89,7 @@ public class HLSStreamWriter implements IStreamWriter {
     private Muxer container;
 
     // the container format
-    //private Muxer containerFormat;
-
-    private MuxerStream audioStream;
-
     private MuxerStream videoStream;
-
-    private Encoder audioCoder;
-
-    private Encoder videoCoder;
 
     // true if the writer should ask FFMPEG to interleave media
     private boolean forceInterleave = false;
@@ -116,10 +97,6 @@ public class HLSStreamWriter implements IStreamWriter {
     private boolean audioComplete = false;
 
     private boolean videoComplete = false;
-
-    private volatile double audioDuration;
-
-    private volatile double videoDuration;
 
     private volatile double lastNewFilePosition = 0;
     private volatile double currentFilePosition = 0;
@@ -137,6 +114,7 @@ public class HLSStreamWriter implements IStreamWriter {
      *
      * @param streamName the stream name of the source
      */
+
     public HLSStreamWriter(String streamName) {
 	outputUrl = MpegTsHandlerFactory.DEFAULT_PROTOCOL + ':' + streamName;
 	this.streamName = streamName;
@@ -156,26 +134,15 @@ public class HLSStreamWriter implements IStreamWriter {
     public void encodeVideo(MediaPacket videoPacket, long timeStamp, TimeUnit timeUnit) {
 	log.info("encodeVideo {} timestamp {} timeunit {} ", outputUrl,timeStamp,timeUnit.toString());
 
-
-	currentFilePosition = videoPacket.getTimeStamp() * videoPacket.getTimeBase().getValue();
+	Rational timeBase = videoPacket.getTimeBase();
+	currentFilePosition = videoPacket.getTimeStamp() * timeBase.getValue();
 	// establish the stream, return silently if no stream returned
 	if (null != videoPacket) {
 	    // encode video picture
 	    videoComplete = videoPacket.isComplete();
 	    if (videoComplete) {
-		final long timeStampMicro;
-		if (timeUnit == null) {
-		    timeStampMicro = Global.NO_PTS;
-		} else {
-		    timeStampMicro = MICROSECONDS.convert(timeStamp, timeUnit);
-		}
-		log.info("Video timestamp {} us", timeStampMicro);
 		// write packet
 		writePacket(videoPacket);
-		// add the duration of our video
-		double dur = (timeStampMicro + videoPacket.getDuration() - prevVideoTime) / 1000000d;
-		videoDuration += dur;
-		log.info("Duration - video: {}", dur);
 		videoPacket.delete();
 	    } else {
 		log.warn("Video packet was not complete");
@@ -183,6 +150,7 @@ public class HLSStreamWriter implements IStreamWriter {
 	} else {
 	    throw new IllegalArgumentException("No video packet");
 	}
+	timeBase.delete();
     }
 
     /**
@@ -211,7 +179,6 @@ public class HLSStreamWriter implements IStreamWriter {
 	meta.setValue("segment_format", "mpegts");
 	meta.setValue("reset_timestamps", "0");
 
-
 	try {
 	    int n = reader.getNumStreams();
 	    for(int i =0; i < n; i++) {
@@ -220,11 +187,10 @@ public class HLSStreamWriter implements IStreamWriter {
 		    ds = reader.getStream(i);
 		}
 		Decoder d = ds.getDecoder();
-		log.info("----  MODEC"+d.toString());
 		container.addNewStream(d);
 
 	    }
-	    container.open(null, null);
+	    container.open(meta, null);
 	} catch(InterruptedException e) {
 	    java.io.StringWriter sw = new java.io.StringWriter();
 	    e.printStackTrace(new java.io.PrintWriter(sw));
@@ -236,35 +202,17 @@ public class HLSStreamWriter implements IStreamWriter {
 	    e.printStackTrace(new java.io.PrintWriter(sw));
 	    String exceptionAsString = sw.toString();
 	    throw new RuntimeException("IOException:"+sw.toString());
-
 	}
 
 	log.info("writer opened");
 
     }
 
-	
     /** 
      * Flush any remaining media data in the media coders.
      */
     public void flush() {
 	log.debug("flush {}", outputUrl);
-	if (audioCoder.getState().equals(Coder.State.STATE_OPENED)) {
-	    MediaPacket packet = MediaPacket.make();
-	    while (!packet.isComplete()) {
-		audioCoder.encodeAudio(packet, null);
-	    }
-	    packet.delete();
-	}
-	// flush video coder
-	if (videoCoder.getState().equals(Coder.State.STATE_OPENED)) {
-	    MediaPacket packet = MediaPacket.make();
-	    while (!packet.isComplete()) {
-		videoCoder.encodeVideo(packet, null);
-	    }
-	    packet.delete();
-	}
-	// flush the container
 	container.close();;
     }
 
@@ -272,16 +220,7 @@ public class HLSStreamWriter implements IStreamWriter {
     public void close() {
 	log.debug("close {}", outputUrl);
 	MpegTsHandlerFactory.getFactory().deleteStream(outputUrl);
-
 	flush();
-	if(videoCoder.getState().equals(Coder.State.STATE_OPENED)){
-	    videoCoder.delete();
-	    videoCoder = null;
-	}
-	if(audioCoder.getState().equals(Coder.State.STATE_OPENED)){
-	    audioCoder.delete();
-	    audioCoder = null;
-	}
 
 	// get the current segment, if one exists
 	Segment segment = facade.getSegment();
@@ -305,9 +244,8 @@ public class HLSStreamWriter implements IStreamWriter {
 	    log.info("Segment returned, check durations currentFilePosition {} lastNewFilePosition {}", currentFilePosition,lastNewFilePosition);
 	    // convert segment limit to seconds
 	    double limit = facade.getSegmentTimeLimit() / 1000d;
-	    log.info("Segment limit: {} audio: {} video: {}", limit, audioDuration, videoDuration);
+	    log.info("Segment limit: {} currentFilePosition: {} lastNewFilePosition: {}", limit, currentFilePosition, lastNewFilePosition);
 	    if ((currentFilePosition - lastNewFilePosition)  >= limit) {
-
 		int duration = (int) (currentFilePosition - lastNewFilePosition);
 		log.info("Duration matched, create new segment {}", duration);
 		segment.setDuration(duration);
@@ -324,13 +262,6 @@ public class HLSStreamWriter implements IStreamWriter {
 	return false;
     }
 
-    /**
-     * Get the default time base we'll use on our encoders if one is not specified by the codec.
-     * @return the default time base
-     */
-    public Rational getDefaultTimebase() {
-	return DEFAULT_TIMEBASE.copyReference();
-    }
 
     /** {@inheritDoc} */
     public String toString() {
