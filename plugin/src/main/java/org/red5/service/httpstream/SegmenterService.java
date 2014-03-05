@@ -64,7 +64,7 @@ public class SegmenterService implements InitializingBean, DisposableBean {
     private boolean memoryMapped;
 
     // maximum number of segments to keep available per stream
-    private int maxSegmentsPerFacade = 4;
+    private int maxSegmentsPerFacade = 8;
 	
     private String outputAudioCodec = "libvo_aacenc";
 	
@@ -105,10 +105,13 @@ public class SegmenterService implements InitializingBean, DisposableBean {
 	SegmentFacade facade = segmentMap.get(name);
 	if (facade == null) {
 	    log.info("Creating segment facade for {}", name);
+
 	    // create a facade
 	    facade = new SegmentFacade(this, name);	
+
 	    // add to the map
 	    addFacade(name, facade);
+
 	    // configure
 	    facade.setSegmentTimeLimit(segmentTimeLimit);
 	    log.info("SEGMENT DIRECTORY:"+segmentDirectory);
@@ -117,16 +120,18 @@ public class SegmenterService implements InitializingBean, DisposableBean {
 	    facade.setMemoryMapped(memoryMapped);
 	    facade.setOutputAudioCodec(outputAudioCodec);
 	    facade.setOutputVideoCodec(outputVideoCodec);
+
 	    // initialization
 	    if (useRTMPReader) {
+
 		// initialize RTMP reader
 		log.info("before init reader");
 		facade.initReader();
-		log.info("after init reader");
+
 		// initialize HLS writer
 		log.info("before init writer");
-	       		facade.initWriter();
-		log.info("after init writer");
+		facade.initWriter();
+
 	    }
 			
 
@@ -147,8 +152,10 @@ public class SegmenterService implements InitializingBean, DisposableBean {
     public void destroy() throws Exception {
 	// walk the map and close them down
 	for (Entry<String, SegmentFacade> entry : segmentMap.entrySet()) {
+	    
 	    SegmentFacade value = entry.getValue();
 	    Segment segment = value.getSegment();
+	    //TODO: Should the files associated with the segment also be removed
 	    if (segment != null) {
 		segment.setLast(true);
 		segment.close();
