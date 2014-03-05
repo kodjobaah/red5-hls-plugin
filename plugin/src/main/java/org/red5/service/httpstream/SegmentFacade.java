@@ -32,7 +32,6 @@ import org.red5.service.httpstream.model.Segment;
 import org.red5.stream.util.AudioMux;
 import org.red5.stream.util.BufferUtils;
 import org.red5.xuggler.reader.RTMPReader;
-import org.red5.xuggler.tool.SampleRateAdjustTool;
 import org.red5.xuggler.writer.HLSStreamWriter;
 
 import org.slf4j.Logger;
