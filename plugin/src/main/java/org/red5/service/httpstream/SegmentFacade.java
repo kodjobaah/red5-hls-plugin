@@ -18,9 +18,6 @@
 
 package org.red5.service.httpstream;
 
-
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -30,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
-import javax.imageio.ImageIO;
 
 import org.red5.logging.Red5LoggerFactory;
 import org.red5.service.httpstream.model.Segment;
@@ -38,18 +34,13 @@ import org.red5.stream.util.AudioMux;
 import org.red5.stream.util.BufferUtils;
 import org.red5.xuggler.reader.RTMPReader;
 import org.red5.xuggler.tool.SampleRateAdjustTool;
-import org.red5.xuggler.tool.VideoAdjustTool;
 import org.red5.xuggler.writer.HLSStreamWriter;
 
 import org.slf4j.Logger;
 
-
 import io.humble.video.Global;
 import io.humble.video.MediaAudio;
 import io.humble.video.Codec;
-import io.humble.video.PixelFormat;
-import io.humble.video.PixelFormat.Type;
-import io.humble.video.Rational;
 import io.humble.video.Muxer;
 import io.humble.video.MediaPacket;
 import io.humble.video.javaxsound.StereoS16AudioConverter;
@@ -111,17 +102,12 @@ public class SegmentFacade {
 
     private String outputAudioCodec;
     private String outputVideoCodec;
-    private int outputWidth = 352;
-    private int outputHeight = 288;
-    private double outputFps = 20d;
-    private int outputAudioChannels = 2;
-    private int outputSampleRate = 44100;
     private Codec audioCodec;
-    private Codec videoCodec;
 
     public SegmentFacade(SegmenterService segmenter, String streamName) {
 
 	log.debug("Segment facade for: {}", streamName);
+
 	// created at
 	creationTime = System.currentTimeMillis();
 
@@ -141,7 +127,6 @@ public class SegmentFacade {
 	reader.init();		
 
     }
-
 
 
     /**
@@ -334,7 +319,6 @@ public class SegmentFacade {
 	}
 	return result;
     }
-
 
 
     public Segment[] getSegments() {
