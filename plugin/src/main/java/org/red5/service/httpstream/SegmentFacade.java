@@ -29,7 +29,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.red5.logging.Red5LoggerFactory;
 import org.red5.service.httpstream.model.Segment;
-import org.red5.stream.util.AudioMux;
 import org.red5.stream.util.BufferUtils;
 import org.red5.humble.reader.RTMPReader;
 import org.red5.humble.writer.HLSStreamWriter;
@@ -63,9 +62,6 @@ public class SegmentFacade {
 
     // writes the output
     private HLSStreamWriter writer;
-
-    // provides audio mux/mix service
-    private AudioMux mux;
 
     // queue of segments
     private ConcurrentLinkedQueue<Segment> segments = new ConcurrentLinkedQueue<Segment>();
@@ -135,7 +131,7 @@ public class SegmentFacade {
 
 	// create a description of the output
 
-	log.debug("Output codecs - audio: {} video: {}", outputAudioCodec, outputVideoCodec);
+	log.debug("Output codecs - video: {}", outputVideoCodec);
 	writer.setup(this);
 
 	// open the writer so we can configure the coders
@@ -185,8 +181,6 @@ public class SegmentFacade {
 	if (dataQueue.isEmpty()) {
 	    if (reader != null && reader.isClosed()) {
 		log.info("No more data being received, reader is closed");
-		return false;
-	    } else if (mux != null && mux.isFinished()) {
 		return false;
 	    }
 	    
@@ -318,35 +312,16 @@ public class SegmentFacade {
 
     }
 
-    /**
-     * Queue the audio data from humble.
-     * 
-     * @param samples audio data to queue
-     * @param timeStamp 
-     * @param timeUnit
-     */
-    public void queueAudio(MediaAudio samples) {
-	QueuedAudioData qad = new QueuedAudioData(samples, samples.getTimeStamp(), Global.DEFAULT_TIME_UNIT);
-	dataQueue.add(qad);
-	// make a copy for group mux if one exists
-	if (mux != null) {
-	    mux.pushData(streamName, qad.getSamples());
-	}
-    }
-
 
     /**
-     * Queue the video data from humble.
-     * 
-     * @param packet The packet
+     * Queue the packet from humble
+     *
+     * @param packet The packe to queue
      */
-    public void queueVideo(MediaPacket packet) {
-	log.info("Queue video:"+dataQueue.isEmpty());
-	dataQueue.add(new QueuedVideoData(packet,Global.DEFAULT_TIME_UNIT));
-
+    public void queuePacket(MediaPacket packet) {
+	log.info("Queue Packet:"+dataQueue.isEmpty());
+	dataQueue.add(new QueuedPacketData(packet,Global.DEFAULT_TIME_UNIT));
     }
-
-
 
     /**
      * @param outputAudioCodec the outputAudioCodec to set
@@ -429,11 +404,6 @@ public class SegmentFacade {
 
     }
 
-    public void setAudioMux(AudioMux mux) {
-	this.mux = mux;
-
-    }	
-
     @Override
     public String toString() {
 	return streamName;
@@ -491,17 +461,18 @@ public class SegmentFacade {
     }
 
 
+
     /**
-     * Queued video data originated from humble video
+     * Queued packet data originated from humble 
      */
-    private final class QueuedVideoData implements IQueuedData {
+    private final class QueuedPacketData implements IQueuedData {
 
 
 	final MediaPacket packet;
 	final TimeUnit timeUnit;
 	final long timeStamp;
 
-	QueuedVideoData(MediaPacket packet, TimeUnit timeUnit) {
+	QueuedPacketData(MediaPacket packet, TimeUnit timeUnit) {
 	    this.packet = packet;
 	    this.timeUnit = timeUnit;
 	    this.timeStamp = packet.getTimeStamp();
@@ -525,6 +496,7 @@ public class SegmentFacade {
 	
     }
 
+
     /**
      * Routes the queued humble derived data to the segments.
      */
@@ -541,14 +513,9 @@ public class SegmentFacade {
 		    if (!dataQueue.isEmpty()) {
 			IQueuedData q = null;
 			while ((q = dataQueue.poll()) != null) {
-			    if (q instanceof QueuedAudioData && audioCodec != null) {
-				// send audio to the hls writer
-				//writer.encodeAudio(((QueuedAudioData) q).getSamples(), q.getTimeStamp(), q.getTimeUnit());
-			    } else if (q instanceof QueuedVideoData) {
-				// send video to the hls writer
-				log.info("writing packet");
-				writer.encodeVideo(((QueuedVideoData) q).getPacket(), q.getTimeStamp(), q.getTimeUnit());
-			    }
+			    // send video to the hls writer
+			    log.info("writing packet");
+			    writer.encodePacket(((QueuedPacketData) q).getPacket(), q.getTimeStamp(), q.getTimeUnit());
 			}
 		    } else {
 			qwLog.info("Queue is empty");
@@ -561,10 +528,6 @@ public class SegmentFacade {
 			log.info("Cancelling queue worker, no more data being received");
 			queueWorkerFuture.cancel(true);
 			writer.close();
-			if (mux != null) {
-			    // remove the streams audio track from the muxer
-			    mux.removeTrack(streamName);
-			}
 		    }
 		    queueWorkerRunning.compareAndSet(true, false);
 		}

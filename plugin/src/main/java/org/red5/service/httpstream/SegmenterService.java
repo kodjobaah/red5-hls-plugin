@@ -27,7 +27,6 @@ import org.red5.logging.Red5LoggerFactory;
 import org.red5.server.api.scope.IScope;
 import org.red5.server.api.stream.IBroadcastStream;
 import org.red5.service.httpstream.model.Segment;
-import org.red5.stream.util.AudioMux;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
@@ -47,9 +46,6 @@ public class SegmenterService implements InitializingBean, DisposableBean {
     // map of currently available segment facades, keyed by stream name
     private static ConcurrentMap<String, SegmentFacade> segmentMap = new ConcurrentHashMap<String, SegmentFacade>();
 
-    // mux service
-    private MuxService muxService;
-	
     // execution handling
     private ThreadPoolTaskScheduler segmentExecutor;
 
@@ -80,16 +76,6 @@ public class SegmenterService implements InitializingBean, DisposableBean {
 	log.info("start - scope: {} stream: {} rtmp reader: {}", scope.getName(), stream.getPublishedName(), useRTMPReader);
 	String streamName = stream.getPublishedName();
 	start(streamName, useRTMPReader);
-	// add the mux associated with the given scope
-	AudioMux mux = muxService.getAudioMux(scope.getName());
-	if (mux != null) {
-	    // get the facade for this stream
-	    segmentMap.get(streamName).setAudioMux(mux);
-	    // add the streams audio track to the muxer
-	    mux.addTrack(2, streamName); // TODO create a better way to know what our output channels are (defaulting to 2 / stereo)
-	} else {
-	    log.warn("Audio mux service was not found");
-	}
     }
 	
     /**
@@ -174,13 +160,6 @@ public class SegmenterService implements InitializingBean, DisposableBean {
 	return segmentExecutor.scheduleAtFixedRate(task, period);
     }	
 	
-    /**
-     * @param muxService the muxService to set
-     */
-    public void setMuxService(MuxService muxService) {
-	this.muxService = muxService;
-    }
-
     /**
      * @param segmentExecutor the segmentExecutor to set
      */
