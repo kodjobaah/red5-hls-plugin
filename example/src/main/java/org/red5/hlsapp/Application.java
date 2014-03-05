@@ -7,7 +7,6 @@ import org.red5.server.api.Red5;
 import org.red5.server.api.scope.IScope;
 import org.red5.server.api.stream.IBroadcastStream;
 import org.red5.server.stream.ClientBroadcastStream;
-import org.red5.service.httpstream.MuxService;
 import org.red5.service.httpstream.SegmenterService;
 import org.slf4j.Logger;
 import org.springframework.beans.BeansException;
@@ -44,17 +43,12 @@ public class Application extends MultiThreadedApplicationAdapter implements Appl
 	
 	@Override
 	public boolean start(IScope scope) {
-		// create and start a muxer
-		MuxService muxer = (MuxService) applicationContext.getBean("mux.service");
-		muxer.start(scope);
 		return super.start(scope);
 	}
 
 	@Override
 	public void stop(IScope scope) {
 		// stop the muxer
-		MuxService muxer = (MuxService) applicationContext.getBean("mux.service");
-		muxer.stop(scope);		
 		super.stop(scope);
 	}
 
