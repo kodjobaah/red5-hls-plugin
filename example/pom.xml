@@ -50,7 +50,7 @@
 		<logback.version>1.0.13</logback.version>
 		<junit.version>4.10</junit.version>
 		<xuggler.version>5.4</xuggler.version>
-		<red5-server.version>1.0.2-SNAPSHOT</red5-server.version>
+		<red5-server.version>1.0.2-RC4</red5-server.version>
 	</properties>
 	<repositories>
 		<repository>
@@ -266,6 +266,7 @@
 				<artifactId>red5-server</artifactId>
 				<version>${red5-server.version}</version>
 				<type>jar</type>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.bouncycastle</groupId>
@@ -277,6 +278,7 @@
 				<artifactId>slf4j-api</artifactId>
 				<version>${slf4j.version}</version>
 			</dependency>
+<!--
 			<dependency>
 				<groupId>org.jboss.spec</groupId>
 				<artifactId>jboss-javaee-6.0</artifactId>
@@ -284,6 +286,7 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+-->
 			<dependency>
 				<groupId>org.apache.mina</groupId>
 				<artifactId>mina-parent</artifactId>
@@ -300,6 +303,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -311,6 +315,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -322,6 +327,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -333,6 +339,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -344,6 +351,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -355,6 +363,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -366,6 +375,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -377,6 +387,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -388,6 +399,7 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
+                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -423,7 +435,7 @@
 				<artifactId>servlet-api</artifactId>
 				<version>2.5</version>
 				<type>jar</type>
-				<scope>compile</scope>
+				<scope>provided</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>		
@@ -436,6 +448,7 @@
 		<dependency>
 			<groupId>org.red5</groupId>
 			<artifactId>red5-server</artifactId>
+                        <scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
@@ -529,6 +542,7 @@
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>servlet-api</artifactId>
+                        <scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
