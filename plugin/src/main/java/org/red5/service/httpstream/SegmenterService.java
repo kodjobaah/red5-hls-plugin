@@ -33,7 +33,6 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-//import com.xuggle.mediatool.ToolFactory;
 import io.humble.video.Global;
 
 /**
@@ -140,7 +139,7 @@ public class SegmenterService implements InitializingBean, DisposableBean {
     }
 
     public void afterPropertiesSet() throws Exception {
-	// put xuggle into turbo mode
+
 	//TODO: Determine if setTurboCharged exists for H-IO
 	//ToolFactory.setTurboCharged(true);
 	if (log.isDebugEnabled()) {

@@ -31,8 +31,8 @@ import org.red5.logging.Red5LoggerFactory;
 import org.red5.service.httpstream.model.Segment;
 import org.red5.stream.util.AudioMux;
 import org.red5.stream.util.BufferUtils;
-import org.red5.xuggler.reader.RTMPReader;
-import org.red5.xuggler.writer.HLSStreamWriter;
+import org.red5.humble.reader.RTMPReader;
+import org.red5.humble.writer.HLSStreamWriter;
 
 import org.slf4j.Logger;
 
@@ -70,7 +70,7 @@ public class SegmentFacade {
     // queue of segments
     private ConcurrentLinkedQueue<Segment> segments = new ConcurrentLinkedQueue<Segment>();
 
-    // queue for data coming from xuggler
+    // queue for data coming from humble
     private ConcurrentLinkedQueue<IQueuedData> dataQueue = new ConcurrentLinkedQueue<IQueuedData>();
 
     // segment currently being written to
@@ -319,7 +319,7 @@ public class SegmentFacade {
     }
 
     /**
-     * Queue the audio data from xuggler.
+     * Queue the audio data from humble.
      * 
      * @param samples audio data to queue
      * @param timeStamp 
@@ -336,7 +336,7 @@ public class SegmentFacade {
 
 
     /**
-     * Queue the video data from xuggler.
+     * Queue the video data from humble.
      * 
      * @param packet The packet
      */
@@ -440,7 +440,7 @@ public class SegmentFacade {
     }
 
     /**
-     * Interface for queued data originated from Xuggler
+     * Interface for queued data originated from Humble
      */
     interface IQueuedData {
 	long getTimeStamp();
@@ -448,7 +448,7 @@ public class SegmentFacade {
     }
 
     /**
-     * Queued audio data originated from Xuggler
+     * Queued audio data originated from Humble
      */
     private final class QueuedAudioData implements IQueuedData {
 	

@@ -23,7 +23,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.red5.logging.Red5LoggerFactory;
 import org.red5.service.httpstream.SegmentFacade;
-import org.red5.xuggler.SampleData;
+import org.red5.humble.SampleData;
 import org.slf4j.Logger;
 
 import io.humble.video.Global;
