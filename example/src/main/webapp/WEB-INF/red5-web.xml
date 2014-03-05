@@ -10,7 +10,7 @@
 		<property name="server" ref="red5.server" />
 		<property name="parent" ref="global.scope" />
 		<property name="context" ref="web.context" />
-		<property name="handler" ref="application" />
+		<property name="handler" ref="web.handler" />
 		<property name="contextPath" value="/hlsapp" />
 		<property name="virtualHosts" value="*" />
 	</bean>
@@ -32,6 +32,7 @@
 		<property name="segmentDirectory" value="/usr/local/src/red5-read-only/target/red5-server-1.0.2-RC4/webapps/hlsapp/WEB-INF/segments/" />
 		<!-- Maximum segments to keep in a segment facade -->
 		<property name="maxSegmentsPerFacade" value="8" />
+		<property name="outputAudioCodec" value="libvo_aacenc" />
 		<!-- <property name="outputAudioCodec" value="libmp3lame" /> -->
 		<property name="outputVideoCodec" value="libx264" />
 	</bean>

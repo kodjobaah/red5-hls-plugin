@@ -43,6 +43,7 @@ public class Application extends MultiThreadedApplicationAdapter implements Appl
 	
 	@Override
 	public boolean start(IScope scope) {
+		// create and start a muxer
 		return super.start(scope);
 	}
 

@@ -266,7 +266,6 @@
 				<artifactId>red5-server</artifactId>
 				<version>${red5-server.version}</version>
 				<type>jar</type>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.bouncycastle</groupId>
@@ -278,7 +277,6 @@
 				<artifactId>slf4j-api</artifactId>
 				<version>${slf4j.version}</version>
 			</dependency>
-<!--
 			<dependency>
 				<groupId>org.jboss.spec</groupId>
 				<artifactId>jboss-javaee-6.0</artifactId>
@@ -286,7 +284,6 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
--->
 			<dependency>
 				<groupId>org.apache.mina</groupId>
 				<artifactId>mina-parent</artifactId>
@@ -303,7 +300,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -315,7 +311,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -327,7 +322,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -339,7 +333,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -351,7 +344,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -363,7 +355,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -375,7 +366,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -387,7 +377,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -399,7 +388,6 @@
 						<artifactId>commons-logging</artifactId>
 					</exclusion>
 				</exclusions>
-                                <scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.springframework</groupId>
@@ -435,7 +423,7 @@
 				<artifactId>servlet-api</artifactId>
 				<version>2.5</version>
 				<type>jar</type>
-				<scope>provided</scope>
+				<scope>compile</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>		
@@ -444,46 +432,54 @@
 			<groupId>org.red5</groupId>
 			<artifactId>hls-plugin</artifactId>
 			<version>1.1</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.red5</groupId>
 			<artifactId>red5-server</artifactId>
-                        <scope>provided</scope>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>jcl-over-slf4j</artifactId>
 			<version>${slf4j.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>jul-to-slf4j</artifactId>
 			<version>${slf4j.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>log4j-over-slf4j</artifactId>
 			<version>${slf4j.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-core</artifactId>
 			<version>${logback.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>${logback.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.mina</groupId>
 			<artifactId>mina-core</artifactId>
 			<version>${mina.version}</version>
 			<type>bundle</type>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.mina</groupId>
@@ -496,61 +492,75 @@
 					<artifactId>mina-integration-ognl</artifactId>
 				</exclusion>
 			</exclusions>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.mina</groupId>
 			<artifactId>mina-integration-beans</artifactId>
 			<version>${mina.version}</version>
 			<type>bundle</type>
+			<scope>provided</scope>
 		</dependency>
+
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-beans</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-context-support</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-test</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-context</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-core</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-expression</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-aop</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-asm</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-web</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>servlet-api</artifactId>
-                        <scope>provided</scope>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>net.sourceforge.groboutils</groupId>
 			<artifactId>groboutils-core</artifactId>
+			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 	<profiles>
