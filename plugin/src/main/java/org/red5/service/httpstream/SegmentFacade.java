@@ -26,7 +26,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.red5.logging.Red5LoggerFactory;
 import org.red5.service.httpstream.model.Segment;
@@ -74,9 +73,6 @@ public class SegmentFacade {
 
     // queue for data coming from xuggler
     private ConcurrentLinkedQueue<IQueuedData> dataQueue = new ConcurrentLinkedQueue<IQueuedData>();
-
-    // lock to protect the segment
-    private final ReentrantLock lock = new ReentrantLock(true);
 
     // segment currently being written to
     private volatile Segment segment;
@@ -217,8 +213,7 @@ public class SegmentFacade {
      * 
      * @return segment
      */
-    public Segment createSegment() {
-	lock.lock();
+    public synchronized Segment createSegment() {
 	// clean up current segment if it exists
 	if (segment != null) {
 	    log.info("Close segment {}? Duration: {}", segment.getIndex(), segment.getDuration());
@@ -234,20 +229,15 @@ public class SegmentFacade {
 
 	}
 
-	try {
 
-	    log.info("createSegment for {}", streamName);
-	    // create a segment - default is memory mapped
-	    segment = new Segment(segmentDirectory, streamName, counter.getAndIncrement(), memoryMapped);
-	    // add to the map for lookup
-	    if (segments.add(segment)) {
-		log.info("Segment {} added, total: {}", segment.getIndex(), segments.size());
-	    }
-
-	} finally {
-	    lock.unlock();
-
+	log.info("createSegment for {}", streamName);
+	// create a segment - default is memory mapped
+	segment = new Segment(segmentDirectory, streamName, counter.getAndIncrement(), memoryMapped);
+	// add to the map for lookup
+	if (segments.add(segment)) {
+	    log.info("Segment {} added, total: {}", segment.getIndex(), segments.size());
 	}
+
 
 	// enforce segment list length
 	if (segments.size() > maxSegmentsPerFacade) {
@@ -272,30 +262,8 @@ public class SegmentFacade {
      * 
      * @return segment currently being written to
      */
-    public Segment getSegment() {
-	boolean acquired = false;
-	try {
-	    acquired = lock.tryLock(1, TimeUnit.SECONDS);
-	    if (acquired) {
-		log.info("getSegment for {} current segment: {}", streamName, segment);
+    public synchronized Segment getSegment() {
 		return segment;
-		
-	    } else {
-		log.info("Lock was not acquired within the timeout");
-	    }
-
-	} catch (Exception e) {
-	    log.warn("Exception trying lock", e);
-	} finally {
-
-	    if (acquired) {
-		lock.unlock();
-
-	    }
-
-	}
-	return null;
-
     }
 
 

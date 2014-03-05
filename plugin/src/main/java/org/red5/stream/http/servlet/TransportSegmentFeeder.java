@@ -62,7 +62,7 @@ public class TransportSegmentFeeder extends HttpServlet {
 	 *      response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		log.debug("Segment feed requested");
+		log.info("Segment feed requested");
 		// get red5 context and segmenter
 		if (service == null) {
 			ApplicationContext appCtx = (ApplicationContext) getServletContext().getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
@@ -71,7 +71,7 @@ public class TransportSegmentFeeder extends HttpServlet {
 		// get the requested stream / segment
 		String servletPath = request.getServletPath();
 		String streamName = servletPath.split("\\.")[0];
-		log.debug("Stream name: {}", streamName);
+		log.info("Stream name: {}", streamName);
 		if (service.isAvailable(streamName)) {
 			response.setContentType("video/MP2T");
 			// data segment
@@ -94,13 +94,13 @@ public class TransportSegmentFeeder extends HttpServlet {
 						// verifies the currently requested stream segment
 						// number against the currently active segment
 						if (service.getSegment(streamName) == null) {
-							log.debug("Requested segment is no longer available");
+							log.info("Requested segment is no longer available");
 							break;
 						}
 					}
 					buffer.clear();
 				} while (segment.hasMoreData());
-				log.trace("Segment {} had no more data", segment.getIndex());
+				log.debug("Segment {} had no more data", segment.getIndex());
 				// flush
 				sos.flush();
 				// segment had no more data

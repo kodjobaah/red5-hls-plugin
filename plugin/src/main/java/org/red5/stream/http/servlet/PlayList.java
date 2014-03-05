@@ -61,7 +61,7 @@ public class PlayList extends HttpServlet {
 	private static SegmenterService service;
 
 	// number of segments that must exist before displaying any in the playlist
-	private int minimumSegmentCount = 1;
+	private int minimumSegmentCount = 2;
 
 	@Override
 	public void init(ServletConfig config) throws ServletException {
@@ -182,13 +182,13 @@ public class PlayList extends HttpServlet {
 					sb.append(String.format("#EXTINF:%.1f, segment\n%s_%s.ts\n", segment.getDuration(), streamName, sequenceNumber));
 					// are we on the last segment?
 					if (segment.isLast()) {
-						log.debug("Last segment");
+						log.info("Last segment");
 						sb.append("#EXT-X-ENDLIST\n");
 						break;
 					}
 				}
 				final String m3u8 = sb.toString();
-				log.debug("Playlist for: {}\n{}", streamName, m3u8);
+				log.info("Playlist for: {}\n{}", streamName, m3u8);
 				writer.write(m3u8);
 				writer.flush();
 			} else {

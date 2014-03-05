@@ -59,7 +59,7 @@ public class TransportSegment extends HttpServlet {
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		log.debug("Segment requested");
+		log.info("Segment requested");
 		// get red5 context and segmenter
 		if (service == null) {
 			ApplicationContext appCtx = (ApplicationContext) getServletContext().getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
@@ -83,7 +83,7 @@ public class TransportSegment extends HttpServlet {
 		int digitIndex = path[0].lastIndexOf('_') + 1;
 		String streamName = path[0].substring(1, digitIndex - 1);
 		int sequenceNumber = Integer.valueOf(path[0].substring(digitIndex));	
-		log.debug("Stream name: {} sequence: {}", streamName, sequenceNumber);
+		log.info("Stream name: {} sequence: {}", streamName, sequenceNumber);
 		if (service.isAvailable(streamName)) {
 			response.setContentType("video/MP2T");
 			Segment segment = service.getSegment(streamName, sequenceNumber);
@@ -102,7 +102,7 @@ public class TransportSegment extends HttpServlet {
     					log.info("Segment result has indicated a problem");
     					// verifies the currently requested stream segment number against the  currently active segment
     					if (service.getSegment(streamName, sequenceNumber) == null) {
-    						log.debug("Requested segment is no longer available");
+    						log.info("Requested segment is no longer available");
     						break;
     					}
     				}
